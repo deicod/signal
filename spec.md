@@ -94,13 +94,13 @@ signal/
 **Priority**: Critical  
 **Estimated Time**: 2-4 hours
 
-- [ ] Initialize Go module (`go mod init github.com/<user>/signal`)
-- [ ] Set up directory structure as outlined above
-- [ ] Configure CI/CD pipeline (GitHub Actions)
-- [ ] Set up linting (golangci-lint) and formatting
-- [ ] Create initial README with project goals
-- [ ] Add LICENSE file (recommend Apache 2.0 or MIT)
-- [ ] Create `.gitignore`
+- [x] Initialize Go module (`go mod init github.com/<user>/signal`)
+- [x] Set up directory structure as outlined above
+- [x] Configure CI/CD pipeline (GitHub Actions)
+- [x] Set up linting (golangci-lint) and formatting
+- [x] Create initial README with project goals
+- [x] Add LICENSE file (recommend Apache 2.0 or MIT)
+- [x] Create `.gitignore`
 
 **Acceptance Criteria**:
 - `go build ./...` succeeds
@@ -115,7 +115,7 @@ signal/
 
 **File**: `crypto/curve25519.go`
 
-- [ ] Implement key pair generation
+- [x] Implement key pair generation
   ```go
   type KeyPair struct {
       PublicKey  [32]byte
@@ -124,14 +124,14 @@ signal/
   
   func GenerateKeyPair() (*KeyPair, error)
   ```
-- [ ] Implement Diffie-Hellman shared secret calculation
+- [x] Implement Diffie-Hellman shared secret calculation
   ```go
   func DH(privateKey, publicKey [32]byte) ([32]byte, error)
   ```
-- [ ] Use `golang.org/x/crypto/curve25519` as underlying implementation
-- [ ] Add input validation (check for low-order points)
-- [ ] Write comprehensive unit tests
-- [ ] Benchmark performance
+- [x] Use `golang.org/x/crypto/curve25519` as underlying implementation
+- [x] Add input validation (check for low-order points)
+- [x] Write comprehensive unit tests
+- [x] Benchmark performance
 
 **Acceptance Criteria**:
 - All test vectors from Signal spec pass
@@ -146,21 +146,21 @@ signal/
 
 **File**: `crypto/hkdf.go`
 
-- [ ] Implement HKDF-SHA256 extract
+- [x] Implement HKDF-SHA256 extract
   ```go
   func HKDFExtract(salt, inputKeyMaterial []byte) []byte
   ```
-- [ ] Implement HKDF-SHA256 expand
+- [x] Implement HKDF-SHA256 expand
   ```go
   func HKDFExpand(prk []byte, info []byte, length int) []byte
   ```
-- [ ] Implement combined HKDF
+- [x] Implement combined HKDF
   ```go
   func HKDF(inputKeyMaterial, salt, info []byte, length int) ([]byte, error)
   ```
-- [ ] Use `golang.org/x/crypto/hkdf`
-- [ ] Validate against RFC 5869 test vectors
-- [ ] Write unit tests
+- [x] Use `golang.org/x/crypto/hkdf`
+- [x] Validate against RFC 5869 test vectors
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - RFC 5869 test vectors pass
