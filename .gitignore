@@ -1,0 +1,27 @@
+# Binaries and build outputs
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+
+# Coverage and profiling
+coverage.out
+*.coverprofile
+*.pprof
+
+# Vendor and workspace metadata
+vendor/
+go.work
+
+# IDE/editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*.log
+
+# Env/config
+.env
+.env.*
