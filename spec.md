@@ -209,19 +209,19 @@ signal/
 
 **File**: `crypto/hmac.go`
 
-- [ ] Implement HMAC-SHA256
+- [x] Implement HMAC-SHA256
   ```go
   func HMAC256(key, data []byte) []byte
   ```
-- [ ] Implement HMAC-SHA512
+- [x] Implement HMAC-SHA512
   ```go
   func HMAC512(key, data []byte) []byte
   ```
-- [ ] Implement constant-time comparison
+- [x] Implement constant-time comparison
   ```go
   func HMACVerify(key, data, expectedMAC []byte) bool
   ```
-- [ ] Write unit tests
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - Constant-time comparison prevents timing attacks
