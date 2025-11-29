@@ -174,17 +174,17 @@ signal/
 
 **File**: `crypto/aead.go`
 
-- [ ] Implement AES-256-GCM encryption/decryption
+- [x] Implement AES-256-GCM encryption/decryption
   ```go
   func AESGCMEncrypt(key, plaintext, associatedData []byte) (ciphertext, nonce []byte, err error)
   func AESGCMDecrypt(key, ciphertext, nonce, associatedData []byte) ([]byte, error)
   ```
-- [ ] Implement ChaCha20-Poly1305 as alternative
+- [x] Implement ChaCha20-Poly1305 as alternative
   ```go
   func ChaChaEncrypt(key, plaintext, associatedData []byte) (ciphertext, nonce []byte, err error)
   func ChaChaDecrypt(key, ciphertext, nonce, associatedData []byte) ([]byte, error)
   ```
-- [ ] Create unified AEAD interface
+- [x] Create unified AEAD interface
   ```go
   type AEAD interface {
       Encrypt(key, plaintext, ad []byte) ([]byte, error)
@@ -193,8 +193,8 @@ signal/
       NonceSize() int
   }
   ```
-- [ ] Secure nonce generation (random or counter-based)
-- [ ] Write unit tests with known test vectors
+- [x] Secure nonce generation (random or counter-based)
+- [x] Write unit tests with known test vectors
 
 **Acceptance Criteria**:
 - Both AES-GCM and ChaCha20-Poly1305 implementations pass standard test vectors
