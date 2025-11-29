@@ -235,13 +235,13 @@ signal/
 
 **File**: `crypto/random.go`
 
-- [ ] Implement secure random byte generation
+- [x] Implement secure random byte generation
   ```go
   func RandomBytes(length int) ([]byte, error)
   ```
-- [ ] Implement random scalar generation for Curve25519
-- [ ] Use `crypto/rand` from standard library
-- [ ] Add fallback handling for entropy exhaustion
+- [x] Implement random scalar generation for Curve25519
+- [x] Use `crypto/rand` from standard library
+- [x] Add fallback handling for entropy exhaustion
 
 **Acceptance Criteria**:
 - Uses OS-provided CSPRNG
