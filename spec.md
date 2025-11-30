@@ -261,7 +261,7 @@ signal/
 
 **File**: `keys/identity.go`
 
-- [ ] Define identity key pair structure
+- [x] Define identity key pair structure
   ```go
   type IdentityKeyPair struct {
       PublicKey  IdentityKey
@@ -272,20 +272,20 @@ signal/
       PublicKey [32]byte
   }
   ```
-- [ ] Implement generation
+- [x] Implement generation
   ```go
   func GenerateIdentityKeyPair() (*IdentityKeyPair, error)
   ```
-- [ ] Implement signing using XEdDSA (Curve25519 -> Ed25519 conversion)
+- [x] Implement signing using XEdDSA (Curve25519 -> Ed25519 conversion)
   ```go
   func (k *IdentityKeyPair) Sign(message []byte) ([]byte, error)
   func (k *IdentityKey) Verify(message, signature []byte) bool
   ```
-- [ ] Implement fingerprint generation
+- [x] Implement fingerprint generation
   ```go
   func (k *IdentityKey) Fingerprint() string
   ```
-- [ ] Write unit tests
+- [x] Write unit tests
 
 **Notes**: XEdDSA allows using Curve25519 keys for both DH and signing. See Signal's XEdDSA spec.
 
