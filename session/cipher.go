@@ -46,7 +46,7 @@ func NewSessionCipher(s store.ProtocolStore, addr store.Address) *SessionCipher 
 
 // Encrypt uses the current session to encrypt plaintext. A session must exist in the store.
 func (c *SessionCipher) Encrypt(plaintext []byte) (*SignalCiphertext, error) {
-	session, err := c.loadSession()
+	session, record, err := c.loadSession()
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (c *SessionCipher) Encrypt(plaintext []byte) (*SignalCiphertext, error) {
 		return nil, fmt.Errorf("session encrypt: %w", err)
 	}
 
-	if err := c.saveSession(session); err != nil {
+	if err := c.saveSession(session, record); err != nil {
 		return nil, err
 	}
 	return &SignalCiphertext{Message: msg}, nil
@@ -64,7 +64,7 @@ func (c *SessionCipher) Encrypt(plaintext []byte) (*SignalCiphertext, error) {
 
 // Decrypt decrypts a ciphertext message using the current session.
 func (c *SessionCipher) Decrypt(message CiphertextMessage) ([]byte, error) {
-	session, err := c.loadSession()
+	session, record, err := c.loadSession()
 	if err != nil {
 		return nil, err
 	}
@@ -79,30 +79,50 @@ func (c *SessionCipher) Decrypt(message CiphertextMessage) ([]byte, error) {
 		return nil, fmt.Errorf("session decrypt: %w", err)
 	}
 
-	if err := c.saveSession(session); err != nil {
+	if err := c.saveSession(session, record); err != nil {
 		return nil, err
 	}
 	return plaintext, nil
 }
 
-func (c *SessionCipher) loadSession() (*Session, error) {
+func (c *SessionCipher) loadSession() (*Session, *Record, error) {
 	record, err := c.store.LoadSession(c.remoteAddress)
 	if err != nil {
-		return nil, fmt.Errorf("load session: %w", err)
+		return nil, nil, fmt.Errorf("load session: %w", err)
 	}
 	if record == nil || record.Data == nil {
-		return nil, fmt.Errorf("no session for %v", c.remoteAddress)
+		return nil, nil, fmt.Errorf("no session for %v", c.remoteAddress)
 	}
-	session, ok := record.Data.(*Session)
-	if !ok || session == nil {
-		return nil, fmt.Errorf("invalid session record for %v", c.remoteAddress)
+	switch data := record.Data.(type) {
+	case *Record:
+		if data.Current() == nil {
+			return nil, nil, fmt.Errorf("invalid session record for %v", c.remoteAddress)
+		}
+		return data.Current(), data, nil
+	case *Session:
+		if data == nil {
+			return nil, nil, fmt.Errorf("invalid session record for %v", c.remoteAddress)
+		}
+		return data, nil, nil
+	default:
+		return nil, nil, fmt.Errorf("invalid session record for %v", c.remoteAddress)
 	}
-	return session, nil
 }
 
-func (c *SessionCipher) saveSession(session *Session) error {
+func (c *SessionCipher) saveSession(session *Session, record *Record) error {
 	if session == nil {
 		return fmt.Errorf("session is nil")
 	}
-	return c.store.StoreSession(c.remoteAddress, &store.SessionRecord{Data: session})
+	if record == nil {
+		var err error
+		record, err = NewRecord(session, DefaultMaxArchivedSessions)
+		if err != nil {
+			return err
+		}
+	} else {
+		if err := record.Promote(session); err != nil {
+			return err
+		}
+	}
+	return c.store.StoreSession(c.remoteAddress, &store.SessionRecord{Data: record})
 }

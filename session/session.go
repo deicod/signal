@@ -96,3 +96,37 @@ func (s *Session) PreviousStates() []*ratchet.State {
 	}
 	return s.previousStates
 }
+
+func (s *Session) clone() *Session {
+	if s == nil {
+		return nil
+	}
+	clone := &Session{
+		version:        s.version,
+		associatedData: append([]byte(nil), s.associatedData...),
+		previousStates: cloneStateSlice(s.previousStates),
+	}
+	if s.ratchetState != nil {
+		clone.ratchetState = s.ratchetState.Clone()
+	}
+	if s.localIdentity != nil {
+		li := *s.localIdentity
+		clone.localIdentity = &li
+	}
+	if s.remoteIdentity != nil {
+		ri := *s.remoteIdentity
+		clone.remoteIdentity = &ri
+	}
+	return clone
+}
+
+func cloneStateSlice(states []*ratchet.State) []*ratchet.State {
+	out := make([]*ratchet.State, 0, len(states))
+	for _, st := range states {
+		if st == nil {
+			continue
+		}
+		out = append(out, st.Clone())
+	}
+	return out
+}

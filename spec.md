@@ -930,18 +930,18 @@ signal/
 
 **File**: `session/record.go`
 
-- [ ] Define session record (handles multiple sessions)
+- [x] Define session record (handles multiple sessions)
   ```go
   type SessionRecord struct {
       currentSession  *Session
       previousSessions []*Session
   }
   ```
-- [ ] Implement session promotion
-- [ ] Implement session archival
-- [ ] Implement serialization
-- [ ] Handle max archived sessions
-- [ ] Write unit tests
+- [x] Implement session promotion
+- [x] Implement session archival
+- [x] Implement serialization
+- [x] Handle max archived sessions
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - Multiple sessions per recipient handled

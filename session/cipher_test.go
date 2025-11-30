@@ -23,7 +23,9 @@ func TestSessionCipherEncryptDecrypt(t *testing.T) {
 	builderAlice := NewSessionBuilder(storeAlice, addrBob)
 	sessionA, initMsg, err := builderAlice.ProcessPreKeyBundle(bundle)
 	require.NoError(t, err)
-	require.NoError(t, storeAlice.StoreSession(addrBob, &store.SessionRecord{Data: sessionA}))
+	recA, err := NewRecord(sessionA, DefaultMaxArchivedSessions)
+	require.NoError(t, err)
+	require.NoError(t, storeAlice.StoreSession(addrBob, &store.SessionRecord{Data: recA}))
 
 	storeBob := memory.NewStore(bobID, 2)
 	require.NoError(t, storeBob.StoreSignedPreKey(signed.ID, signed))
@@ -34,7 +36,9 @@ func TestSessionCipherEncryptDecrypt(t *testing.T) {
 	builderBob := NewSessionBuilder(storeBob, addrAlice)
 	sessionB, _, err := builderBob.ProcessPreKeyMessage(initMsg)
 	require.NoError(t, err)
-	require.NoError(t, storeBob.StoreSession(addrAlice, &store.SessionRecord{Data: sessionB}))
+	recB, err := NewRecord(sessionB, DefaultMaxArchivedSessions)
+	require.NoError(t, err)
+	require.NoError(t, storeBob.StoreSession(addrAlice, &store.SessionRecord{Data: recB}))
 
 	cipherA := NewSessionCipher(storeAlice, addrBob)
 	cipherB := NewSessionCipher(storeBob, addrAlice)
