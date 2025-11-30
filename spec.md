@@ -676,17 +676,17 @@ signal/
 
 **File**: `ratchet/dh_ratchet.go`
 
-- [ ] Implement root key KDF
+- [x] Implement root key KDF
   ```go
   func KDFRoot(rootKey [32]byte, dhOutput [32]byte) (newRootKey, chainKey [32]byte)
   ```
-- [ ] Implement DH ratchet step
+- [x] Implement DH ratchet step
   ```go
   func (s *State) DHRatchet(theirPublicKey [32]byte) error
   ```
-- [ ] Handle ratchet on receiving new DH key
+- [x] Handle ratchet on receiving new DH key
 - [ ] Handle ratchet before sending
-- [ ] Write unit tests
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - Root key updates correctly
