@@ -581,8 +581,8 @@ signal/
 - [x] Test with invalid/expired signed pre-key
 - [x] Test with wrong identity key
 - [x] Test replay attack prevention
-- [ ] Add fuzzing tests
-- [ ] Benchmark performance
+- [x] Add fuzzing tests
+- [x] Benchmark performance
 
 **Acceptance Criteria**:
 - Full handshake completes successfully
