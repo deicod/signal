@@ -69,6 +69,8 @@ func (x *Initiator) ProcessPreKeyBundle(bundle *keys.PreKeyBundle) (*Result, err
 	}
 	var shared [32]byte
 	copy(shared[:], secretBytes)
+	zeroBytes(ikm)
+	zeroBytes(secretBytes)
 
 	msg := Message{
 		IdentityKey:    x.identityKey.PublicKey,

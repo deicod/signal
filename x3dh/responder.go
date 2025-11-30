@@ -77,6 +77,8 @@ func (r *Responder) ProcessInitialMessage(msg *Message) (*Result, error) {
 	}
 	var shared [32]byte
 	copy(shared[:], secretBytes)
+	zeroBytes(ikm)
+	zeroBytes(secretBytes)
 
 	return &Result{
 		SharedSecret:   shared,

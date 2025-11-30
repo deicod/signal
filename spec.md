@@ -561,8 +561,8 @@ signal/
   ```go
   AD = Encode(IKa) || Encode(IKb)
   ```
-- [ ] Clear sensitive data after use
-- [ ] Write unit tests
+- [x] Clear sensitive data after use
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - Associated data matches spec
@@ -576,11 +576,11 @@ signal/
 
 **File**: `x3dh/x3dh_test.go`
 
-- [ ] Test complete handshake (Alice → Bob)
-- [ ] Test handshake without one-time pre-key
-- [ ] Test with invalid/expired signed pre-key
-- [ ] Test with wrong identity key
-- [ ] Test replay attack prevention
+- [x] Test complete handshake (Alice → Bob)
+- [x] Test handshake without one-time pre-key
+- [x] Test with invalid/expired signed pre-key
+- [x] Test with wrong identity key
+- [x] Test replay attack prevention
 - [ ] Add fuzzing tests
 - [ ] Benchmark performance
 

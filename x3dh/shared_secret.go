@@ -15,3 +15,9 @@ func AssociatedData(initiator keys.IdentityKey, responder keys.IdentityKey) []by
 	h.Write(responder.SigningPublic[:])
 	return h.Sum(nil)
 }
+
+func zeroBytes(b []byte) {
+	for i := range b {
+		b[i] = 0
+	}
+}
