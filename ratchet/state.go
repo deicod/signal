@@ -52,7 +52,11 @@ func InitializeState(x3 *x3dh.Result, isInitiator bool) (*State, error) {
 		return nil, err
 	}
 	s.RK = rk
-	s.CKs = cks
+	if isInitiator {
+		s.CKs = cks
+	} else {
+		s.CKr = cks
+	}
 
 	// Set DH keys: initiator uses its ephemeral as DHs; responder has DHr only.
 	if isInitiator {
@@ -91,7 +95,7 @@ func (s *State) Clone() *State {
 
 // RatchetOnSend performs a DH ratchet before sending if DHr is set (i.e., after receiving a new DH).
 func (s *State) RatchetOnSend() error {
-	if s.DHr == nil {
+	if s.DHr == nil || s.DHs == nil {
 		// No pending remote DH; nothing to ratchet.
 		return nil
 	}

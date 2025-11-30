@@ -57,18 +57,6 @@ func TestRatchetOnSendUsesDHr(t *testing.T) {
 	require.NotZero(t, state.CKs)
 }
 
-func dummyX3DHResult(t *testing.T) *x3dh.Result {
-	t.Helper()
-	curveKey := mustHex32(t, "0102030405060708090a0b0c0d0e0f00112233445566778899aabbccddeeff")
-	initMsg := x3dh.Message{EphemeralKey: curveKey}
-	return &x3dh.Result{
-		SharedSecret:   mustHex32(t, "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"),
-		AssociatedData: []byte("ad"),
-		RemoteIdentity: x3dh.Message{}.IdentityKey, // empty
-		InitialMessage: initMsg,
-	}
-}
-
 func mustHex32(tb testing.TB, s string) [32]byte {
 	tb.Helper()
 	var out [32]byte
