@@ -636,7 +636,7 @@ signal/
   func InitializeState(x3dhResult *X3DHResult, isInitiator bool) (*State, error)
   ```
 - [ ] Implement state cloning (for atomic operations)
-- [ ] Write unit tests
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - State properly initialized from X3DH
