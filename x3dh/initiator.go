@@ -79,7 +79,7 @@ func (x *Initiator) ProcessPreKeyBundle(bundle *keys.PreKeyBundle) (*Result, err
 
 	return &Result{
 		SharedSecret:   shared,
-		AssociatedData: nil,
+		AssociatedData: AssociatedData(x.identityKey.PublicKey, bundle.IdentityKey),
 		RemoteIdentity: bundle.IdentityKey,
 		InitialMessage: msg,
 	}, nil

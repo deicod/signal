@@ -549,7 +549,7 @@ signal/
 
 **File**: `x3dh/shared_secret.go`
 
-- [ ] Define X3DH result structure
+- [x] Define X3DH result structure
   ```go
   type X3DHResult struct {
       SharedSecret   [32]byte
@@ -557,7 +557,7 @@ signal/
       RemoteIdentity IdentityKey
   }
   ```
-- [ ] Implement associated data calculation
+- [x] Implement associated data calculation
   ```go
   AD = Encode(IKa) || Encode(IKb)
   ```

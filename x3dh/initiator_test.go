@@ -62,6 +62,7 @@ func TestInitiatorDerivesSharedSecretWithAndWithoutPreKey(t *testing.T) {
 			expected, err := signalcrypto.HKDF(ikm, nil, infoString, 32)
 			require.NoError(t, err)
 			require.Equal(t, expected, result.SharedSecret[:])
+			require.Equal(t, AssociatedData(initID.PublicKey, respID.PublicKey), result.AssociatedData)
 		})
 	}
 }

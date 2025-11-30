@@ -124,4 +124,5 @@ func TestResponderSharedSecretMatchesManualDH(t *testing.T) {
 	ikm := append(append(dh1[:], dh2[:]...), dh3[:]...)
 	expected, _ := signalcrypto.HKDF(ikm, nil, infoString, 32)
 	require.Equal(t, expected, respResult.SharedSecret[:])
+	require.Equal(t, AssociatedData(initID.PublicKey, respID.PublicKey), respResult.AssociatedData)
 }

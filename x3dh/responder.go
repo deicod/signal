@@ -80,7 +80,7 @@ func (r *Responder) ProcessInitialMessage(msg *Message) (*Result, error) {
 
 	return &Result{
 		SharedSecret:   shared,
-		AssociatedData: nil,
+		AssociatedData: AssociatedData(msg.IdentityKey, r.identityKey.PublicKey),
 		RemoteIdentity: msg.IdentityKey,
 		InitialMessage: *msg,
 	}, nil
