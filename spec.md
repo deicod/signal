@@ -376,16 +376,16 @@ signal/
 
 **File**: `keys/serialize.go`
 
-- [ ] Choose serialization format (Protocol Buffers recommended)
+- [x] Choose serialization format (Protocol Buffers recommended)
 - [ ] Define `.proto` files for all key types
-- [ ] Implement serialization for all key types
+- [x] Implement serialization for all key types
   ```go
   func (k *IdentityKey) Serialize() ([]byte, error)
   func DeserializeIdentityKey(data []byte) (*IdentityKey, error)
   ```
-- [ ] Implement for PreKey, SignedPreKey, PreKeyBundle
-- [ ] Add versioning to serialization format
-- [ ] Write unit tests (round-trip tests)
+- [x] Implement for PreKey, SignedPreKey, PreKeyBundle
+- [x] Add versioning to serialization format
+- [x] Write unit tests (round-trip tests)
 
 **Acceptance Criteria**:
 - All key types serialize/deserialize correctly
