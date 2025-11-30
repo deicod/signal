@@ -302,7 +302,7 @@ signal/
 
 **File**: `keys/prekey.go`
 
-- [ ] Define pre-key structure
+- [x] Define pre-key structure
   ```go
   type PreKey struct {
       ID        uint32
@@ -310,7 +310,7 @@ signal/
       Timestamp time.Time
   }
   ```
-- [ ] Define signed pre-key structure
+- [x] Define signed pre-key structure
   ```go
   type SignedPreKey struct {
       ID        uint32
@@ -319,17 +319,17 @@ signal/
       Timestamp time.Time
   }
   ```
-- [ ] Implement pre-key generation
+- [x] Implement pre-key generation
   ```go
   func GeneratePreKey(id uint32) (*PreKey, error)
   func GeneratePreKeys(startID uint32, count int) ([]*PreKey, error)
   ```
-- [ ] Implement signed pre-key generation
+- [x] Implement signed pre-key generation
   ```go
   func GenerateSignedPreKey(identityKey *IdentityKeyPair, id uint32) (*SignedPreKey, error)
   ```
-- [ ] Implement signature verification
-- [ ] Write unit tests
+- [x] Implement signature verification
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - Signed pre-key signatures verify against identity key
