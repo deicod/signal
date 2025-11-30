@@ -714,7 +714,7 @@ signal/
   func (h *Header) Serialize() []byte
   func DeserializeHeader(data []byte) (*Header, error)
   ```
-- [ ] Implement header encryption (optional, for metadata protection)
+- [x] Implement header encryption (optional, for metadata protection)
 - [x] Write unit tests
 
 **Acceptance Criteria**:

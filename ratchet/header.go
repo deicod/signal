@@ -4,6 +4,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+
+	"crypto/aes"
+	"crypto/cipher"
 )
 
 // Header carries ratchet header info.
@@ -40,4 +43,46 @@ func (h *Header) Validate() error {
 		return errors.New("header is nil")
 	}
 	return nil
+}
+
+// EncryptHeader encrypts the serialized header using AES-GCM with provided key and nonce.
+func EncryptHeader(h *Header, key, nonce []byte) ([]byte, error) {
+	if len(key) != 32 {
+		return nil, fmt.Errorf("header: key must be 32 bytes")
+	}
+	if len(nonce) != 12 {
+		return nil, fmt.Errorf("header: nonce must be 12 bytes")
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("header: cipher: %w", err)
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("header: gcm: %w", err)
+	}
+	return gcm.Seal(nil, nonce, h.Serialize(), nil), nil
+}
+
+// DecryptHeader decrypts an encrypted header using AES-GCM.
+func DecryptHeader(key, nonce, ciphertext []byte) (*Header, error) {
+	if len(key) != 32 {
+		return nil, fmt.Errorf("header: key must be 32 bytes")
+	}
+	if len(nonce) != 12 {
+		return nil, fmt.Errorf("header: nonce must be 12 bytes")
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("header: cipher: %w", err)
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("header: gcm: %w", err)
+	}
+	plain, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, fmt.Errorf("header: decrypt: %w", err)
+	}
+	return DeserializeHeader(plain)
 }
