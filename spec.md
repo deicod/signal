@@ -400,7 +400,7 @@ signal/
 
 **Files**: `store/*.go`
 
-- [ ] Define identity key store interface
+- [x] Define identity key store interface
   ```go
   type IdentityKeyStore interface {
       GetIdentityKeyPair() (*IdentityKeyPair, error)
@@ -410,7 +410,7 @@ signal/
       GetIdentity(address Address) (*IdentityKey, error)
   }
   ```
-- [ ] Define pre-key store interface
+- [x] Define pre-key store interface
   ```go
   type PreKeyStore interface {
       LoadPreKey(id uint32) (*PreKey, error)
@@ -419,7 +419,7 @@ signal/
       RemovePreKey(id uint32) error
   }
   ```
-- [ ] Define signed pre-key store interface
+- [x] Define signed pre-key store interface
   ```go
   type SignedPreKeyStore interface {
       LoadSignedPreKey(id uint32) (*SignedPreKey, error)
@@ -428,7 +428,7 @@ signal/
       RemoveSignedPreKey(id uint32) error
   }
   ```
-- [ ] Define session store interface
+- [x] Define session store interface
   ```go
   type SessionStore interface {
       LoadSession(address Address) (*SessionRecord, error)
@@ -438,7 +438,7 @@ signal/
       DeleteAllSessions(name string) error
   }
   ```
-- [ ] Define combined protocol store interface
+- [x] Define combined protocol store interface
   ```go
   type ProtocolStore interface {
       IdentityKeyStore
@@ -447,8 +447,8 @@ signal/
       SessionStore
   }
   ```
-- [ ] Implement in-memory store for testing
-- [ ] Write unit tests for in-memory implementation
+- [x] Implement in-memory store for testing
+- [x] Write unit tests for in-memory implementation
 
 **Acceptance Criteria**:
 - Interfaces are complete and allow any backend
