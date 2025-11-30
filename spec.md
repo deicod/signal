@@ -603,7 +603,7 @@ signal/
 
 **File**: `ratchet/state.go`
 
-- [ ] Define ratchet state structure
+ - [x] Define ratchet state structure
   ```go
   type State struct {
       // DH Ratchet
@@ -631,7 +631,7 @@ signal/
       N         uint32
   }
   ```
-- [ ] Implement state initialization from X3DH result
+- [x] Implement state initialization from X3DH result
   ```go
   func InitializeState(x3dhResult *X3DHResult, isInitiator bool) (*State, error)
   ```
@@ -654,7 +654,7 @@ signal/
   ```go
   func KDFChain(chainKey [32]byte) (newChainKey, messageKey [32]byte)
   ```
-- [ ] Use HMAC-SHA256 with different constants:
+- [x] Use HMAC-SHA256 with different constants:
   - Chain key: HMAC(CK, 0x02)
   - Message key: HMAC(CK, 0x01)
 - [x] Implement message key derivation for encryption
@@ -701,7 +701,7 @@ signal/
 
 **File**: `ratchet/header.go`
 
-- [ ] Define header structure
+- [x] Define header structure
   ```go
   type Header struct {
       DH [32]byte  // Sender's current DH public key
@@ -729,18 +729,18 @@ signal/
 
 **File**: `ratchet/encrypt.go`
 
-- [ ] Implement encryption function
+- [x] Implement encryption function
   ```go
   func (s *State) Encrypt(plaintext, associatedData []byte) (*Message, error)
   ```
-- [ ] Steps:
+- [x] Steps:
   1. If first message or DHr changed, perform DH ratchet
   2. Derive message key from sending chain
   3. Advance sending chain
   4. Encrypt plaintext with message key
   5. Create and return message with header
-- [ ] Handle associated data properly
-- [ ] Write unit tests
+- [x] Handle associated data properly
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - Messages encrypt correctly
@@ -755,19 +755,19 @@ signal/
 
 **File**: `ratchet/decrypt.go`
 
-- [ ] Implement decryption function
+- [x] Implement decryption function
   ```go
   func (s *State) Decrypt(message *Message, associatedData []byte) ([]byte, error)
   ```
-- [ ] Steps:
+- [x] Steps:
   1. Check if message key is in skipped keys
   2. If new DH key, perform DH ratchet(s)
   3. Skip any missed messages, storing their keys
   4. Derive message key
   5. Decrypt and return plaintext
-- [ ] Handle out-of-order messages
-- [ ] Handle duplicate messages
-- [ ] Write unit tests
+- [x] Handle out-of-order messages
+- [x] Handle duplicate messages
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - Decrypts in-order messages correctly
@@ -782,20 +782,20 @@ signal/
 
 **File**: `ratchet/skipped.go`
 
-- [ ] Implement skipped key storage
+- [x] Implement skipped key storage
   ```go
   func (s *State) skipMessageKeys(until uint32) error
   ```
-- [ ] Implement skipped key lookup
+- [x] Implement skipped key lookup
   ```go
   func (s *State) trySkippedMessageKey(header *Header) (*[32]byte, error)
   ```
-- [ ] Implement max skip limit (prevent DoS)
+- [x] Implement max skip limit (prevent DoS)
   ```go
   const MaxSkip = 1000
   ```
-- [ ] Implement skipped key cleanup (age-based)
-- [ ] Write unit tests
+- [x] Implement skipped key cleanup (age-based)
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - Out-of-order messages within limit work
@@ -810,14 +810,14 @@ signal/
 
 **File**: `ratchet/ratchet_test.go`
 
-- [ ] Test simple back-and-forth conversation
-- [ ] Test one-sided conversation (many messages, no response)
-- [ ] Test out-of-order message delivery
-- [ ] Test message loss and recovery
-- [ ] Test max skip limit
-- [ ] Test with actual X3DH initialization
-- [ ] Add fuzzing tests
-- [ ] Benchmark performance
+- [x] Test simple back-and-forth conversation
+- [x] Test one-sided conversation (many messages, no response)
+- [x] Test out-of-order message delivery
+- [x] Test message loss and recovery
+- [x] Test max skip limit
+- [x] Test with actual X3DH initialization
+- [x] Add fuzzing tests
+- [x] Benchmark performance
 
 **Acceptance Criteria**:
 - All conversation patterns work correctly

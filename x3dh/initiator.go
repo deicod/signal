@@ -80,9 +80,11 @@ func (x *Initiator) ProcessPreKeyBundle(bundle *keys.PreKeyBundle) (*Result, err
 	}
 
 	return &Result{
-		SharedSecret:   shared,
-		AssociatedData: AssociatedData(x.identityKey.PublicKey, bundle.IdentityKey),
-		RemoteIdentity: bundle.IdentityKey,
-		InitialMessage: msg,
+		SharedSecret:     shared,
+		AssociatedData:   AssociatedData(x.identityKey.PublicKey, bundle.IdentityKey),
+		RemoteIdentity:   bundle.IdentityKey,
+		InitialMessage:   msg,
+		LocalEphemeral:   ephemeral,
+		RemoteRatchetKey: &bundle.SignedPreKeyPublic,
 	}, nil
 }

@@ -81,9 +81,10 @@ func (r *Responder) ProcessInitialMessage(msg *Message) (*Result, error) {
 	zeroBytes(secretBytes)
 
 	return &Result{
-		SharedSecret:   shared,
-		AssociatedData: AssociatedData(msg.IdentityKey, r.identityKey.PublicKey),
-		RemoteIdentity: msg.IdentityKey,
-		InitialMessage: *msg,
+		SharedSecret:    shared,
+		AssociatedData:  AssociatedData(msg.IdentityKey, r.identityKey.PublicKey),
+		RemoteIdentity:  msg.IdentityKey,
+		InitialMessage:  *msg,
+		LocalRatchetKey: r.signedPreKey.KeyPair,
 	}, nil
 }

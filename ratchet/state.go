@@ -41,35 +41,87 @@ func InitializeState(x3 *x3dh.Result, isInitiator bool) (*State, error) {
 	if x3 == nil {
 		return nil, errors.New("ratchet: x3dh result required")
 	}
-	s := &State{
+	if x3.SharedSecret == ([32]byte{}) {
+		return nil, errors.New("ratchet: shared secret must be set")
+	}
+
+	state := &State{
+		RK:        x3.SharedSecret,
 		MKSkipped: make(map[SkippedKey][32]byte),
 	}
 
-	// Derive initial root and chain keys from shared secret.
-	// For now, split into RK and CKs using HKDF with distinct info labels.
-	rk, cks, err := deriveInitialKeys(x3.SharedSecret[:], isInitiator)
-	if err != nil {
-		return nil, err
-	}
-	s.RK = rk
 	if isInitiator {
-		s.CKs = cks
+		var err error
+		if x3.LocalEphemeral != nil {
+			kp := *x3.LocalEphemeral
+			state.DHs = &kp
+		} else {
+			state.DHs, err = signalcrypto.GenerateKeyPair()
+			if err != nil {
+				return nil, fmt.Errorf("ratchet: generate initiator dh: %w", err)
+			}
+		}
+		if x3.RemoteRatchetKey == nil {
+			return nil, errors.New("ratchet: initiator missing remote ratchet key")
+		}
+		state.DHr = x3.RemoteRatchetKey
+
+		dhOut, err := signalcrypto.DH(state.DHs.PrivateKey, *state.DHr)
+		if err != nil {
+			return nil, fmt.Errorf("ratchet: initial dh (initiator): %w", err)
+		}
+		newRK, cks, err := KDFRoot(state.RK, dhOut)
+		if err != nil {
+			return nil, err
+		}
+		state.RK = newRK
+		state.CKs = cks
 	} else {
-		s.CKr = cks
+		remoteDH := x3.InitialMessage.EphemeralKey
+		state.DHr = &remoteDH
+
+		if x3.LocalRatchetKey != nil {
+			kp := *x3.LocalRatchetKey
+			state.DHs = &kp
+		} else {
+			dh, err := signalcrypto.GenerateKeyPair()
+			if err != nil {
+				return nil, fmt.Errorf("ratchet: generate responder dh: %w", err)
+			}
+			state.DHs = dh
+		}
+
+		// First derive receiving chain from initial DH.
+		dhRecv, err := signalcrypto.DH(state.DHs.PrivateKey, remoteDH)
+		if err != nil {
+			return nil, fmt.Errorf("ratchet: initial dh (responder): %w", err)
+		}
+		newRK, ckr, err := KDFRoot(state.RK, dhRecv)
+		if err != nil {
+			return nil, err
+		}
+		state.RK = newRK
+		state.CKr = ckr
+
+		// Prepare a fresh DHs for sending chain.
+		newDH, err := signalcrypto.GenerateKeyPair()
+		if err != nil {
+			return nil, fmt.Errorf("ratchet: generate send dh: %w", err)
+		}
+		dhSend, err := signalcrypto.DH(newDH.PrivateKey, remoteDH)
+		if err != nil {
+			return nil, fmt.Errorf("ratchet: dh send setup: %w", err)
+		}
+		newRK, cks, err := KDFRoot(state.RK, dhSend)
+		if err != nil {
+			return nil, err
+		}
+		state.RK = newRK
+		state.CKs = cks
+		state.DHs = newDH
 	}
 
-	// Set DH keys: initiator uses its ephemeral as DHs; responder has DHr only.
-	if isInitiator {
-		// Initiator sends first; DHs is its ephemeral, DHr is nil until reply.
-		dh := x3.InitialMessage.EphemeralKey
-		s.DHs = &signalcrypto.KeyPair{PublicKey: dh}
-	} else {
-		// Responder has received initiator's DH (in message header).
-		dh := x3.InitialMessage.EphemeralKey
-		s.DHr = &dh
-	}
-
-	return s, nil
+	return state, nil
 }
 
 // Clone returns a deep copy of the state suitable for atomic updates.
@@ -96,36 +148,7 @@ func (s *State) Clone() *State {
 // RatchetOnSend performs a DH ratchet before sending if DHr is set (i.e., after receiving a new DH).
 func (s *State) RatchetOnSend() error {
 	if s.DHr == nil || s.DHs == nil {
-		// No pending remote DH; nothing to ratchet.
 		return nil
 	}
 	return s.DHRatchet(*s.DHr)
-}
-
-func deriveInitialKeys(shared []byte, _ bool) (root [32]byte, ck [32]byte, err error) {
-	if len(shared) != 32 {
-		return root, ck, fmt.Errorf("ratchet: shared secret must be 32 bytes, got %d", len(shared))
-	}
-	infoRK := []byte("DoubleRatchetRoot")
-	infoCK := []byte("DoubleRatchetChain")
-
-	rkBytes, err := signalcrypto.HKDF(shared, nil, infoRK, 32)
-	if err != nil {
-		return root, ck, fmt.Errorf("ratchet: hkdf root: %w", err)
-	}
-	ckBytes, err := signalcrypto.HKDF(shared, nil, infoCK, 32)
-	if err != nil {
-		return root, ck, fmt.Errorf("ratchet: hkdf chain: %w", err)
-	}
-	copy(root[:], rkBytes)
-	copy(ck[:], ckBytes)
-	zeroBytes(rkBytes)
-	zeroBytes(ckBytes)
-	return root, ck, nil
-}
-
-func zeroBytes(b []byte) {
-	for i := range b {
-		b[i] = 0
-	}
 }

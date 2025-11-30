@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/deicod/signal/crypto"
-	"github.com/deicod/signal/x3dh"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,16 +21,7 @@ func TestKDFRootProducesDistinctKeys(t *testing.T) {
 }
 
 func TestDHRatchetUpdatesKeysAndCounters(t *testing.T) {
-	// Initial state
-	shared := mustHex32(t, "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff")
-	initMsg := dummyInitMsg(t)
-	x3res := &x3dh.Result{
-		SharedSecret:   shared,
-		AssociatedData: []byte("ad"),
-		InitialMessage: initMsg,
-	}
-	state, err := InitializeState(x3res, true)
-	require.NoError(t, err)
+	state, _, _, _ := buildTestStates(t)
 
 	their, err := crypto.GenerateKeyPair()
 	require.NoError(t, err)
@@ -50,11 +40,4 @@ func TestDHRatchetUpdatesKeysAndCounters(t *testing.T) {
 	require.Equal(t, their.PublicKey, *state.DHr)
 	require.NotZero(t, state.CKs)
 	require.NotZero(t, state.CKr)
-}
-
-func dummyInitMsg(t *testing.T) x3dh.Message {
-	t.Helper()
-	return x3dh.Message{
-		EphemeralKey: mustHex32(t, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
-	}
 }

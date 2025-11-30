@@ -9,33 +9,30 @@ import (
 )
 
 func TestInitializeStateFromX3DHInitiator(t *testing.T) {
-	x3 := dummyX3DHResult(t)
-	state, err := InitializeState(x3, true)
-	require.NoError(t, err)
-	require.NotNil(t, state.DHs)
-	require.Nil(t, state.DHr)
-	require.NotZero(t, state.RK)
-	require.NotZero(t, state.CKs)
-	require.Zero(t, state.CKr)
+	alice, _, _, _ := buildTestStates(t)
+	require.NotNil(t, alice.DHs)
+	require.NotNil(t, alice.DHr)
+	require.NotZero(t, alice.RK)
+	require.NotZero(t, alice.CKs)
+	require.Zero(t, alice.CKr)
 }
 
 func TestInitializeStateFromX3DHResponder(t *testing.T) {
-	x3 := dummyX3DHResult(t)
-	state, err := InitializeState(x3, false)
-	require.NoError(t, err)
-	require.Nil(t, state.DHs)
-	require.NotNil(t, state.DHr)
-	require.Equal(t, x3.InitialMessage.EphemeralKey, *state.DHr)
+	_, bob, _, respRes := buildTestStates(t)
+	require.NotNil(t, bob.DHs)
+	require.NotNil(t, bob.DHr)
+	require.Equal(t, respRes.InitialMessage.EphemeralKey, *bob.DHr)
+	require.NotZero(t, bob.CKr)
+	require.NotZero(t, bob.CKs)
 }
 
 func TestInitializeStateRejectsInvalidSharedSecret(t *testing.T) {
 	_, err := InitializeState(&x3dh.Result{SharedSecret: [32]byte{}}, true)
-	require.NoError(t, err)
+	require.Error(t, err)
 }
 
 func TestCloneMakesDeepCopy(t *testing.T) {
-	x3 := dummyX3DHResult(t)
-	state, _ := InitializeState(x3, true)
+	state, _, _, _ := buildTestStates(t)
 	state.MKSkipped[SkippedKey{N: 1}] = mustHex32(t, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 
 	clone := state.Clone()
@@ -46,14 +43,9 @@ func TestCloneMakesDeepCopy(t *testing.T) {
 }
 
 func TestRatchetOnSendUsesDHr(t *testing.T) {
-	x3 := dummyX3DHResult(t)
-	state, _ := InitializeState(x3, true)
-	their := mustHex32(t, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
-	state.DHr = &their
-
+	state, _, _, _ := buildTestStates(t)
 	err := state.RatchetOnSend()
 	require.NoError(t, err)
-	require.NotNil(t, state.DHs)
 	require.NotZero(t, state.CKs)
 }
 

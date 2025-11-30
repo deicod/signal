@@ -58,5 +58,6 @@ func (s *State) DHRatchet(theirPublicKey [32]byte) error {
 	s.RK = newRoot
 	s.CKs = newCKs
 	s.DHr = &theirPublicKey
+	s.cleanupSkippedKeys(*s.DHr)
 	return nil
 }
