@@ -956,7 +956,7 @@ signal/
 
 **Files**: `protocol/*.go`
 
-- [ ] Define base message interface
+- [x] Define base message interface
   ```go
   type CiphertextMessage interface {
       Type() CiphertextType
@@ -969,7 +969,7 @@ signal/
       SignalType
   )
   ```
-- [ ] Implement Signal message (regular message)
+- [x] Implement Signal message (regular message)
   ```go
   type SignalMessage struct {
       Version          uint8
@@ -980,7 +980,7 @@ signal/
       MAC              []byte
   }
   ```
-- [ ] Implement Pre-key message (initial message)
+- [x] Implement Pre-key message (initial message)
   ```go
   type PreKeyMessage struct {
       Version           uint8
@@ -992,9 +992,9 @@ signal/
       SignalMessage     *SignalMessage
   }
   ```
-- [ ] Implement serialization (Protocol Buffers)
-- [ ] Implement MAC calculation and verification
-- [ ] Write unit tests
+- [x] Implement serialization (Protocol Buffers)
+- [x] Implement MAC calculation and verification
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - Message formats match Signal spec
