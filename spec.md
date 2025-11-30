@@ -864,7 +864,7 @@ signal/
 
 **File**: `session/builder.go`
 
-- [ ] Implement session builder
+- [x] Implement session builder
   ```go
   type SessionBuilder struct {
       store         ProtocolStore
@@ -873,16 +873,16 @@ signal/
   
   func NewSessionBuilder(store ProtocolStore, address Address) *SessionBuilder
   ```
-- [ ] Implement outgoing session creation
+- [x] Implement outgoing session creation
   ```go
   func (b *SessionBuilder) ProcessPreKeyBundle(bundle *PreKeyBundle) error
   ```
-- [ ] Implement incoming session creation
+- [x] Implement incoming session creation
   ```go
   func (b *SessionBuilder) ProcessPreKeyMessage(message *PreKeyMessage) (*Session, []byte, error)
   ```
-- [ ] Handle identity key trust decisions
-- [ ] Write unit tests
+- [x] Handle identity key trust decisions
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - Sessions created correctly from bundles
