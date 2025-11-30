@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/deicod/signal/keys"
 	"github.com/deicod/signal/x3dh"
 	"github.com/stretchr/testify/require"
 )
@@ -65,7 +64,7 @@ func dummyX3DHResult(t *testing.T) *x3dh.Result {
 	return &x3dh.Result{
 		SharedSecret:   mustHex32(t, "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"),
 		AssociatedData: []byte("ad"),
-		RemoteIdentity: keys.IdentityKey{},
+		RemoteIdentity: x3dh.Message{}.IdentityKey, // empty
 		InitialMessage: initMsg,
 	}
 }

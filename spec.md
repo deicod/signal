@@ -685,7 +685,7 @@ signal/
   func (s *State) DHRatchet(theirPublicKey [32]byte) error
   ```
 - [x] Handle ratchet on receiving new DH key
-- [ ] Handle ratchet before sending
+- [x] Handle ratchet before sending
 - [x] Write unit tests
 
 **Acceptance Criteria**:
