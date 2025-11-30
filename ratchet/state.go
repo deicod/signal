@@ -68,6 +68,27 @@ func InitializeState(x3 *x3dh.Result, isInitiator bool) (*State, error) {
 	return s, nil
 }
 
+// Clone returns a deep copy of the state suitable for atomic updates.
+func (s *State) Clone() *State {
+	if s == nil {
+		return nil
+	}
+	clone := *s
+	if s.DHs != nil {
+		kp := *s.DHs
+		clone.DHs = &kp
+	}
+	if s.DHr != nil {
+		dhr := *s.DHr
+		clone.DHr = &dhr
+	}
+	clone.MKSkipped = make(map[SkippedKey][32]byte, len(s.MKSkipped))
+	for k, v := range s.MKSkipped {
+		clone.MKSkipped[k] = v
+	}
+	return &clone
+}
+
 func deriveInitialKeys(shared []byte, _ bool) (root [32]byte, ck [32]byte, err error) {
 	if len(shared) != 32 {
 		return root, ck, fmt.Errorf("ratchet: shared secret must be 32 bytes, got %d", len(shared))

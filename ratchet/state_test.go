@@ -34,6 +34,18 @@ func TestInitializeStateRejectsInvalidSharedSecret(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestCloneMakesDeepCopy(t *testing.T) {
+	x3 := dummyX3DHResult(t)
+	state, _ := InitializeState(x3, true)
+	state.MKSkipped[SkippedKey{N: 1}] = mustHex32(t, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+
+	clone := state.Clone()
+	require.Equal(t, state.MKSkipped, clone.MKSkipped)
+
+	clone.MKSkipped[SkippedKey{N: 2}] = mustHex32(t, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+	require.NotEqual(t, state.MKSkipped, clone.MKSkipped)
+}
+
 func dummyX3DHResult(t *testing.T) *x3dh.Result {
 	t.Helper()
 	curveKey := mustHex32(t, "0102030405060708090a0b0c0d0e0f00112233445566778899aabbccddeeff")

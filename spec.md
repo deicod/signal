@@ -635,7 +635,7 @@ signal/
   ```go
   func InitializeState(x3dhResult *X3DHResult, isInitiator bool) (*State, error)
   ```
-- [ ] Implement state cloning (for atomic operations)
+- [x] Implement state cloning (for atomic operations)
 - [x] Write unit tests
 
 **Acceptance Criteria**:
@@ -650,18 +650,18 @@ signal/
 
 **File**: `ratchet/chain.go`
 
-- [ ] Implement chain key derivation
+- [x] Implement chain key derivation
   ```go
   func KDFChain(chainKey [32]byte) (newChainKey, messageKey [32]byte)
   ```
 - [ ] Use HMAC-SHA256 with different constants:
   - Chain key: HMAC(CK, 0x02)
   - Message key: HMAC(CK, 0x01)
-- [ ] Implement message key derivation for encryption
+- [x] Implement message key derivation for encryption
   ```go
   func DeriveMessageKeys(messageKey [32]byte) (encKey, authKey, iv []byte)
   ```
-- [ ] Write unit tests with test vectors
+- [x] Write unit tests with test vectors
 
 **Acceptance Criteria**:
 - Chain advances correctly
