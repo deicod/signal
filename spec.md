@@ -344,7 +344,7 @@ signal/
 
 **File**: `keys/bundle.go`
 
-- [ ] Define pre-key bundle structure (published to server)
+- [x] Define pre-key bundle structure (published to server)
   ```go
   type PreKeyBundle struct {
       RegistrationID       uint32
@@ -357,12 +357,12 @@ signal/
       IdentityKey          IdentityKey
   }
   ```
-- [ ] Implement bundle creation
-- [ ] Implement bundle validation
+- [x] Implement bundle creation
+- [x] Implement bundle validation
   ```go
   func (b *PreKeyBundle) Validate() error
   ```
-- [ ] Write unit tests
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - Bundle validation catches invalid signatures
