@@ -515,7 +515,7 @@ signal/
 
 **File**: `x3dh/responder.go`
 
-- [ ] Implement message processing
+- [x] Implement message processing
   ```go
   type X3DHResponder struct {
       identityKey    *IdentityKeyPair
@@ -527,14 +527,14 @@ signal/
   
   func (x *X3DHResponder) ProcessInitialMessage(msg *X3DHMessage) (*X3DHResult, error)
   ```
-- [ ] Implement DH calculations (Bob's side):
+- [x] Implement DH calculations (Bob's side):
   - DH1 = DH(SPKb, IKa)
   - DH2 = DH(IKb, EKa)
   - DH3 = DH(SPKb, EKa)
   - DH4 = DH(OPKb, EKa) [if one-time pre-key was used]
-- [ ] Delete one-time pre-key after use
-- [ ] Derive same shared secret as initiator
-- [ ] Write unit tests
+- [x] Delete one-time pre-key after use
+- [x] Derive same shared secret as initiator
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - Derives identical shared secret as initiator
