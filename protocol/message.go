@@ -4,7 +4,9 @@ package protocol
 type CiphertextType int
 
 const (
+	// PreKeyType indicates a ciphertext carrying the X3DH initial message.
 	PreKeyType CiphertextType = iota
+	// SignalType indicates a standard Double Ratchet ciphertext.
 	SignalType
 )
 

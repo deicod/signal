@@ -19,7 +19,7 @@ func TestProcessPreKeyBundleCreatesSession(t *testing.T) {
 	require.NoError(t, err)
 
 	storeAlice := memory.NewStore(aliceID, 1)
-	builder := NewSessionBuilder(storeAlice, store.Address{Name: "bob", Device: 1})
+	builder := NewBuilder(storeAlice, store.Address{Name: "bob", Device: 1})
 
 	session, msg, err := builder.ProcessPreKeyBundle(bundle)
 	require.NoError(t, err)
@@ -46,7 +46,7 @@ func TestProcessPreKeyBundleRejectsUntrusted(t *testing.T) {
 	addr := store.Address{Name: "bob", Device: 1}
 	require.NoError(t, storeAlice.SaveIdentity(addr, &otherID.PublicKey))
 
-	builder := NewSessionBuilder(storeAlice, addr)
+	builder := NewBuilder(storeAlice, addr)
 	session, msg, err := builder.ProcessPreKeyBundle(bundle)
 	require.Error(t, err)
 	require.Nil(t, session)
@@ -65,7 +65,7 @@ func TestProcessPreKeyMessageCreatesSession(t *testing.T) {
 	// Alice builds initial message.
 	storeAlice := memory.NewStore(aliceID, 1)
 	addrBob := store.Address{Name: "bob", Device: 1}
-	initBuilder := NewSessionBuilder(storeAlice, addrBob)
+	initBuilder := NewBuilder(storeAlice, addrBob)
 	initSession, initMsg, err := initBuilder.ProcessPreKeyBundle(bundle)
 	require.NoError(t, err)
 	require.NotNil(t, initSession)
@@ -77,7 +77,7 @@ func TestProcessPreKeyMessageCreatesSession(t *testing.T) {
 		require.NoError(t, storeBob.StorePreKey(pre.ID, pre))
 	}
 
-	respBuilder := NewSessionBuilder(storeBob, store.Address{Name: "alice", Device: 1})
+	respBuilder := NewBuilder(storeBob, store.Address{Name: "alice", Device: 1})
 	session, ad, err := respBuilder.ProcessPreKeyMessage(initMsg)
 	require.NoError(t, err)
 	require.NotNil(t, session)
@@ -100,7 +100,7 @@ func TestProcessPreKeyMessageRejectsUntrusted(t *testing.T) {
 	require.NoError(t, err)
 
 	storeAlice := memory.NewStore(aliceID, 1)
-	initBuilder := NewSessionBuilder(storeAlice, store.Address{Name: "bob", Device: 1})
+	initBuilder := NewBuilder(storeAlice, store.Address{Name: "bob", Device: 1})
 	_, initMsg, err := initBuilder.ProcessPreKeyBundle(bundle)
 	require.NoError(t, err)
 
@@ -113,7 +113,7 @@ func TestProcessPreKeyMessageRejectsUntrusted(t *testing.T) {
 	addrAlice := store.Address{Name: "alice", Device: 1}
 	require.NoError(t, storeBob.SaveIdentity(addrAlice, &otherID.PublicKey))
 
-	respBuilder := NewSessionBuilder(storeBob, addrAlice)
+	respBuilder := NewBuilder(storeBob, addrAlice)
 	session, ad, err := respBuilder.ProcessPreKeyMessage(initMsg)
 	require.Error(t, err)
 	require.Nil(t, session)

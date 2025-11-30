@@ -28,24 +28,24 @@ type SignalCiphertext struct {
 // Type implements CiphertextMessage.
 func (s *SignalCiphertext) Type() CiphertextType { return SignalType }
 
-// SessionCipher offers high-level encryption/decryption for a remote address.
-type SessionCipher struct {
+// Cipher offers high-level encryption/decryption for a remote address.
+type Cipher struct {
 	store         store.ProtocolStore
 	remoteAddress store.Address
-	builder       *SessionBuilder
+	builder       *Builder
 }
 
-// NewSessionCipher builds a cipher bound to a ProtocolStore and remote address.
-func NewSessionCipher(s store.ProtocolStore, addr store.Address) *SessionCipher {
-	return &SessionCipher{
+// NewCipher builds a cipher bound to a ProtocolStore and remote address.
+func NewCipher(s store.ProtocolStore, addr store.Address) *Cipher {
+	return &Cipher{
 		store:         s,
 		remoteAddress: addr,
-		builder:       NewSessionBuilder(s, addr),
+		builder:       NewBuilder(s, addr),
 	}
 }
 
 // Encrypt uses the current session to encrypt plaintext. A session must exist in the store.
-func (c *SessionCipher) Encrypt(plaintext []byte) (*SignalCiphertext, error) {
+func (c *Cipher) Encrypt(plaintext []byte) (*SignalCiphertext, error) {
 	session, record, err := c.loadSession()
 	if err != nil {
 		return nil, err
@@ -63,7 +63,7 @@ func (c *SessionCipher) Encrypt(plaintext []byte) (*SignalCiphertext, error) {
 }
 
 // Decrypt decrypts a ciphertext message using the current session.
-func (c *SessionCipher) Decrypt(message CiphertextMessage) ([]byte, error) {
+func (c *Cipher) Decrypt(message CiphertextMessage) ([]byte, error) {
 	session, record, err := c.loadSession()
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func (c *SessionCipher) Decrypt(message CiphertextMessage) ([]byte, error) {
 	return plaintext, nil
 }
 
-func (c *SessionCipher) loadSession() (*Session, *Record, error) {
+func (c *Cipher) loadSession() (*Session, *Record, error) {
 	record, err := c.store.LoadSession(c.remoteAddress)
 	if err != nil {
 		return nil, nil, fmt.Errorf("load session: %w", err)
@@ -109,7 +109,7 @@ func (c *SessionCipher) loadSession() (*Session, *Record, error) {
 	}
 }
 
-func (c *SessionCipher) saveSession(session *Session, record *Record) error {
+func (c *Cipher) saveSession(session *Session, record *Record) error {
 	if session == nil {
 		return fmt.Errorf("session is nil")
 	}

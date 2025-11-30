@@ -866,20 +866,20 @@ signal/
 
 - [x] Implement session builder
   ```go
-  type SessionBuilder struct {
+  type Builder struct {
       store         ProtocolStore
       remoteAddress Address
   }
   
-  func NewSessionBuilder(store ProtocolStore, address Address) *SessionBuilder
+  func NewBuilder(store ProtocolStore, address Address) *Builder
   ```
 - [x] Implement outgoing session creation
   ```go
-  func (b *SessionBuilder) ProcessPreKeyBundle(bundle *PreKeyBundle) error
+  func (b *Builder) ProcessPreKeyBundle(bundle *PreKeyBundle) error
   ```
 - [x] Implement incoming session creation
   ```go
-  func (b *SessionBuilder) ProcessPreKeyMessage(message *PreKeyMessage) (*Session, []byte, error)
+  func (b *Builder) ProcessPreKeyMessage(message *PreKeyMessage) (*Session, []byte, error)
   ```
 - [x] Handle identity key trust decisions
 - [x] Write unit tests
@@ -899,20 +899,20 @@ signal/
 
 - [x] Implement high-level cipher
   ```go
-  type SessionCipher struct {
+  type Cipher struct {
       store         ProtocolStore
       remoteAddress Address
   }
   
-  func NewSessionCipher(store ProtocolStore, address Address) *SessionCipher
+  func NewCipher(store ProtocolStore, address Address) *Cipher
   ```
 - [x] Implement encryption
   ```go
-  func (c *SessionCipher) Encrypt(plaintext []byte) (*CiphertextMessage, error)
+  func (c *Cipher) Encrypt(plaintext []byte) (*SignalCiphertext, error)
   ```
 - [x] Implement decryption
   ```go
-  func (c *SessionCipher) Decrypt(message *CiphertextMessage) ([]byte, error)
+  func (c *Cipher) Decrypt(message CiphertextMessage) ([]byte, error)
   ```
 - [x] Auto-detect message type (pre-key vs regular)
 - [x] Write unit tests

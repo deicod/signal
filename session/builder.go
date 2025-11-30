@@ -9,15 +9,15 @@ import (
 	"github.com/deicod/signal/x3dh"
 )
 
-// SessionBuilder bootstraps sessions using pre-key bundles and initial messages.
-type SessionBuilder struct {
+// Builder bootstraps sessions using pre-key bundles and initial messages.
+type Builder struct {
 	store         store.ProtocolStore
 	remoteAddress store.Address
 }
 
-// NewSessionBuilder constructs a session builder for the given remote address.
-func NewSessionBuilder(s store.ProtocolStore, addr store.Address) *SessionBuilder {
-	return &SessionBuilder{
+// NewBuilder constructs a session builder for the given remote address.
+func NewBuilder(s store.ProtocolStore, addr store.Address) *Builder {
+	return &Builder{
 		store:         s,
 		remoteAddress: addr,
 	}
@@ -25,7 +25,7 @@ func NewSessionBuilder(s store.ProtocolStore, addr store.Address) *SessionBuilde
 
 // ProcessPreKeyBundle creates an outgoing session using the recipient's pre-key bundle.
 // It returns the initialized Session and the X3DH initial message to send.
-func (b *SessionBuilder) ProcessPreKeyBundle(bundle *keys.PreKeyBundle) (*Session, *x3dh.Message, error) {
+func (b *Builder) ProcessPreKeyBundle(bundle *keys.PreKeyBundle) (*Session, *x3dh.Message, error) {
 	if b == nil || b.store == nil {
 		return nil, nil, fmt.Errorf("session builder not initialized")
 	}
@@ -64,7 +64,7 @@ func (b *SessionBuilder) ProcessPreKeyBundle(bundle *keys.PreKeyBundle) (*Sessio
 
 // ProcessPreKeyMessage handles an incoming X3DH initial message from a remote party and
 // initializes the responder's session. It returns the Session and associated data.
-func (b *SessionBuilder) ProcessPreKeyMessage(msg *x3dh.Message) (*Session, []byte, error) {
+func (b *Builder) ProcessPreKeyMessage(msg *x3dh.Message) (*Session, []byte, error) {
 	if b == nil || b.store == nil {
 		return nil, nil, fmt.Errorf("session builder not initialized")
 	}

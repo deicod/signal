@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSessionCipherEncryptDecrypt(t *testing.T) {
+func TestCipherEncryptDecrypt(t *testing.T) {
 	aliceID, _ := keys.GenerateIdentityKeyPair()
 	bobID, _ := keys.GenerateIdentityKeyPair()
 	signed, _ := keys.GenerateSignedPreKey(bobID, 3)
@@ -20,7 +20,7 @@ func TestSessionCipherEncryptDecrypt(t *testing.T) {
 
 	storeAlice := memory.NewStore(aliceID, 1)
 	addrBob := store.Address{Name: "bob", Device: 1}
-	builderAlice := NewSessionBuilder(storeAlice, addrBob)
+	builderAlice := NewBuilder(storeAlice, addrBob)
 	sessionA, initMsg, err := builderAlice.ProcessPreKeyBundle(bundle)
 	require.NoError(t, err)
 	recA, err := NewRecord(sessionA, DefaultMaxArchivedSessions)
@@ -33,15 +33,15 @@ func TestSessionCipherEncryptDecrypt(t *testing.T) {
 		require.NoError(t, storeBob.StorePreKey(pre.ID, pre))
 	}
 	addrAlice := store.Address{Name: "alice", Device: 1}
-	builderBob := NewSessionBuilder(storeBob, addrAlice)
+	builderBob := NewBuilder(storeBob, addrAlice)
 	sessionB, _, err := builderBob.ProcessPreKeyMessage(initMsg)
 	require.NoError(t, err)
 	recB, err := NewRecord(sessionB, DefaultMaxArchivedSessions)
 	require.NoError(t, err)
 	require.NoError(t, storeBob.StoreSession(addrAlice, &store.SessionRecord{Data: recB}))
 
-	cipherA := NewSessionCipher(storeAlice, addrBob)
-	cipherB := NewSessionCipher(storeBob, addrAlice)
+	cipherA := NewCipher(storeAlice, addrBob)
+	cipherB := NewCipher(storeBob, addrAlice)
 
 	ct, err := cipherA.Encrypt([]byte("hello"))
 	require.NoError(t, err)
@@ -57,10 +57,10 @@ func TestSessionCipherEncryptDecrypt(t *testing.T) {
 	require.Equal(t, []byte("pong"), back)
 }
 
-func TestSessionCipherRequiresSession(t *testing.T) {
+func TestCipherRequiresSession(t *testing.T) {
 	id, _ := keys.GenerateIdentityKeyPair()
 	protoStore := memory.NewStore(id, 1)
-	cipher := NewSessionCipher(protoStore, store.Address{Name: "nobody", Device: 1})
+	cipher := NewCipher(protoStore, store.Address{Name: "nobody", Device: 1})
 	_, err := cipher.Encrypt([]byte("data"))
 	require.Error(t, err)
 }
