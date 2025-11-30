@@ -377,7 +377,7 @@ signal/
 **File**: `keys/serialize.go`
 
 - [x] Choose serialization format (Protocol Buffers recommended)
-- [ ] Define `.proto` files for all key types
+- [x] Define `.proto` files for all key types
 - [x] Implement serialization for all key types
   ```go
   func (k *IdentityKey) Serialize() ([]byte, error)

@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package signal.keys;
+
+option go_package = "github.com/deicod/signal/proto;proto";
+
+message IdentityKey {
+  bytes curve25519_public = 1; // 32 bytes
+  bytes ed25519_public    = 2; // 32 bytes
+}
+
+message PreKey {
+  uint32 id           = 1;
+  bytes  public_key   = 2; // 32 bytes
+}
+
+message SignedPreKey {
+  uint32 id           = 1;
+  bytes  public_key   = 2; // 32 bytes
+  bytes  signature    = 3;
+}
+
+message PreKeyBundle {
+  uint32 registration_id         = 1;
+  uint32 device_id               = 2;
+  PreKey pre_key                 = 3; // optional: omit for one-time pre-key absence
+  SignedPreKey signed_pre_key    = 4;
+  IdentityKey identity_key       = 5;
+}
