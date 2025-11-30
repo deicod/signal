@@ -89,6 +89,15 @@ func (s *State) Clone() *State {
 	return &clone
 }
 
+// RatchetOnSend performs a DH ratchet before sending if DHr is set (i.e., after receiving a new DH).
+func (s *State) RatchetOnSend() error {
+	if s.DHr == nil {
+		// No pending remote DH; nothing to ratchet.
+		return nil
+	}
+	return s.DHRatchet(*s.DHr)
+}
+
 func deriveInitialKeys(shared []byte, _ bool) (root [32]byte, ck [32]byte, err error) {
 	if len(shared) != 32 {
 		return root, ck, fmt.Errorf("ratchet: shared secret must be 32 bytes, got %d", len(shared))

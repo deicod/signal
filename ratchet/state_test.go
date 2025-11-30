@@ -46,6 +46,18 @@ func TestCloneMakesDeepCopy(t *testing.T) {
 	require.NotEqual(t, state.MKSkipped, clone.MKSkipped)
 }
 
+func TestRatchetOnSendUsesDHr(t *testing.T) {
+	x3 := dummyX3DHResult(t)
+	state, _ := InitializeState(x3, true)
+	their := mustHex32(t, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+	state.DHr = &their
+
+	err := state.RatchetOnSend()
+	require.NoError(t, err)
+	require.NotNil(t, state.DHs)
+	require.NotZero(t, state.CKs)
+}
+
 func dummyX3DHResult(t *testing.T) *x3dh.Result {
 	t.Helper()
 	curveKey := mustHex32(t, "0102030405060708090a0b0c0d0e0f00112233445566778899aabbccddeeff")

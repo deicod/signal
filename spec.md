@@ -709,13 +709,13 @@ signal/
       N  uint32    // Message number in current chain
   }
   ```
-- [ ] Implement header serialization
+- [x] Implement header serialization
   ```go
   func (h *Header) Serialize() []byte
   func DeserializeHeader(data []byte) (*Header, error)
   ```
 - [ ] Implement header encryption (optional, for metadata protection)
-- [ ] Write unit tests
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - Header correctly serialized/deserialized
