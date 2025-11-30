@@ -27,9 +27,10 @@ type SignedPreKeyStore interface {
 	RemoveSignedPreKey(id uint32) error
 }
 
-// SessionRecord represents a session state placeholder.
+// SessionRecord is an opaque container for session persistence.
+// Implementations can store any serialized or in-memory session representation.
 type SessionRecord struct {
-	// TODO: fill with session state once session implementation lands.
+	Data any
 }
 
 // SessionStore stores session records by address.

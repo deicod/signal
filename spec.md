@@ -897,7 +897,7 @@ signal/
 
 **File**: `session/cipher.go`
 
-- [ ] Implement high-level cipher
+- [x] Implement high-level cipher
   ```go
   type SessionCipher struct {
       store         ProtocolStore
@@ -906,16 +906,16 @@ signal/
   
   func NewSessionCipher(store ProtocolStore, address Address) *SessionCipher
   ```
-- [ ] Implement encryption
+- [x] Implement encryption
   ```go
   func (c *SessionCipher) Encrypt(plaintext []byte) (*CiphertextMessage, error)
   ```
-- [ ] Implement decryption
+- [x] Implement decryption
   ```go
   func (c *SessionCipher) Decrypt(message *CiphertextMessage) ([]byte, error)
   ```
-- [ ] Auto-detect message type (pre-key vs regular)
-- [ ] Write unit tests
+- [x] Auto-detect message type (pre-key vs regular)
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - High-level API is simple to use
