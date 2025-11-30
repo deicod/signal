@@ -469,7 +469,7 @@ signal/
 
 **File**: `x3dh/initiator.go`
 
-- [ ] Implement initial message creation
+- [x] Implement initial message creation
   ```go
   type X3DHInitiator struct {
       identityKey *IdentityKeyPair
@@ -480,16 +480,16 @@ signal/
   
   func (x *X3DHInitiator) ProcessPreKeyBundle(bundle *PreKeyBundle) (*X3DHResult, error)
   ```
-- [ ] Implement DH calculations per spec:
+- [x] Implement DH calculations per spec:
   - DH1 = DH(IKa, SPKb)
   - DH2 = DH(EKa, IKb)
   - DH3 = DH(EKa, SPKb)
   - DH4 = DH(EKa, OPKb) [if one-time pre-key present]
-- [ ] Implement shared secret derivation
+- [x] Implement shared secret derivation
   ```go
   SK = HKDF(DH1 || DH2 || DH3 || DH4, salt=0, info="X3DH")
   ```
-- [ ] Create initial message structure
+- [x] Create initial message structure
   ```go
   type X3DHMessage struct {
       IdentityKey    IdentityKey
@@ -499,8 +499,8 @@ signal/
       Ciphertext     []byte  // First Double Ratchet message
   }
   ```
-- [ ] Handle case without one-time pre-key
-- [ ] Write unit tests
+- [x] Handle case without one-time pre-key
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - Produces correct shared secret per X3DH spec
