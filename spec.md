@@ -838,7 +838,7 @@ signal/
 
 **File**: `session/session.go`
 
-- [ ] Define session state structure
+- [x] Define session state structure
   ```go
   type Session struct {
       ratchetState    *ratchet.State
@@ -848,9 +848,9 @@ signal/
       previousStates  []*ratchet.State  // For handling delayed messages
   }
   ```
-- [ ] Implement session version tracking
-- [ ] Implement session archiving (for key rotation)
-- [ ] Write unit tests
+- [x] Implement session version tracking
+- [x] Implement session archiving (for key rotation)
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - Session properly encapsulates ratchet state
