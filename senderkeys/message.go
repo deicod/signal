@@ -5,14 +5,14 @@ import (
 
 	"google.golang.org/protobuf/encoding/protowire"
 
+	signalcrypto "github.com/deicod/signal/crypto"
 	signalerrors "github.com/deicod/signal/errors"
 	"github.com/deicod/signal/keys"
 )
 
-const (
-	senderKeyMessageVersion = uint8(3)
-	senderKeySignatureSize  = 64
-)
+const senderKeyMessageVersion uint8 = 3
+
+const senderKeySignatureSize = 64
 
 type distributionMessage struct {
 	messageVersion uint8
@@ -307,11 +307,21 @@ func decodeSenderKeyDistributionBody(data []byte) (distributionID [distributionI
 				return distributionID, 0, 0, chainKey, signingPublic, fmt.Errorf("%w: sender key signing key", signalerrors.ErrInvalidMessage)
 			}
 			data = data[n:]
-			key, err := keys.DeserializeWirePublicKey(val)
-			if err != nil {
-				return distributionID, 0, 0, chainKey, signingPublic, err
+			switch len(val) {
+			case 32:
+				copy(signingPublic[:], val)
+				if err := signalcrypto.ValidatePublicKey(signingPublic); err != nil {
+					return distributionID, 0, 0, chainKey, signingPublic, fmt.Errorf("%w: sender key signing key", signalerrors.ErrInvalidMessage)
+				}
+			case 33:
+				key, err := keys.DeserializeWirePublicKey(val)
+				if err != nil {
+					return distributionID, 0, 0, chainKey, signingPublic, err
+				}
+				signingPublic = key
+			default:
+				return distributionID, 0, 0, chainKey, signingPublic, fmt.Errorf("%w: sender key signing key length %d", signalerrors.ErrInvalidMessage, len(val))
 			}
-			signingPublic = key
 			gotSigningKey = true
 		default:
 			if typ == protowire.BytesType {

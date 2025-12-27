@@ -36,34 +36,39 @@ type messageVector struct {
 }
 
 func TestSenderKeyVectors(t *testing.T) {
-	vec := loadSenderKeyVectors(t)
+	files := []string{"senderkeys.json", "senderkeys_libsignal.json"}
+	for _, filename := range files {
+		t.Run(filename, func(t *testing.T) {
+			vec := loadSenderKeyVectors(t, filename)
 
-	distBytes := mustHexBytes(t, vec.Distribution.Serialized)
-	msgBytes := mustHexBytes(t, vec.Message.Serialized)
+			distBytes := mustHexBytes(t, vec.Distribution.Serialized)
+			msgBytes := mustHexBytes(t, vec.Message.Serialized)
 
-	dist, err := parseDistributionMessage(distBytes)
-	require.NoError(t, err)
-	require.Equal(t, senderKeyMessageVersion, dist.messageVersion)
-	require.Equal(t, vec.Distribution.ChainID, dist.keyID)
-	require.Equal(t, vec.Distribution.Iteration, dist.iteration)
-	require.Equal(t, mustHex16(t, vec.Distribution.DistributionID), dist.distributionID)
-	require.Equal(t, mustHex32(t, vec.Distribution.ChainKey), dist.chainKey)
-	require.Equal(t, mustHex32(t, vec.Distribution.SigningPublic), dist.signingPublic)
+			dist, err := parseDistributionMessage(distBytes)
+			require.NoError(t, err)
+			require.Equal(t, senderKeyMessageVersion, dist.messageVersion)
+			require.Equal(t, vec.Distribution.ChainID, dist.keyID)
+			require.Equal(t, vec.Distribution.Iteration, dist.iteration)
+			require.Equal(t, mustHex16(t, vec.Distribution.DistributionID), dist.distributionID)
+			require.Equal(t, mustHex32(t, vec.Distribution.ChainKey), dist.chainKey)
+			require.Equal(t, mustHex32(t, vec.Distribution.SigningPublic), dist.signingPublic)
 
-	msg, signedBytes, err := parseSenderKeyMessage(msgBytes)
-	require.NoError(t, err)
-	require.Equal(t, senderKeyMessageVersion, msg.messageVersion)
-	require.Equal(t, vec.Message.ChainID, msg.keyID)
-	require.Equal(t, vec.Message.Iteration, msg.iteration)
-	require.Equal(t, mustHex16(t, vec.Message.DistributionID), msg.distributionID)
-	require.Equal(t, mustHexBytes(t, vec.Message.Ciphertext), msg.ciphertext)
-	require.Equal(t, mustHexBytes(t, vec.Message.Signature), msg.signature[:])
+			msg, signedBytes, err := parseSenderKeyMessage(msgBytes)
+			require.NoError(t, err)
+			require.Equal(t, senderKeyMessageVersion, msg.messageVersion)
+			require.Equal(t, vec.Message.ChainID, msg.keyID)
+			require.Equal(t, vec.Message.Iteration, msg.iteration)
+			require.Equal(t, mustHex16(t, vec.Message.DistributionID), msg.distributionID)
+			require.Equal(t, mustHexBytes(t, vec.Message.Ciphertext), msg.ciphertext)
+			require.Equal(t, mustHexBytes(t, vec.Message.Signature), msg.signature[:])
 
-	ok := signalcrypto.XEdDSAVerify(dist.signingPublic, msg.signature[:], signedBytes)
-	require.True(t, ok)
+			ok := signalcrypto.XEdDSAVerify(dist.signingPublic, msg.signature[:], signedBytes)
+			require.True(t, ok)
 
-	plaintext := decryptSenderKeyVector(t, dist, msg)
-	require.Equal(t, mustHexBytes(t, vec.Plaintext), plaintext)
+			plaintext := decryptSenderKeyVector(t, dist, msg)
+			require.Equal(t, mustHexBytes(t, vec.Plaintext), plaintext)
+		})
+	}
 }
 
 func decryptSenderKeyVector(t *testing.T, dist *distributionMessage, msg *senderKeyMessage) []byte {
@@ -81,9 +86,9 @@ func decryptSenderKeyVector(t *testing.T, dist *distributionMessage, msg *sender
 	return plaintext
 }
 
-func loadSenderKeyVectors(t *testing.T) senderKeyVectors {
+func loadSenderKeyVectors(t *testing.T, filename string) senderKeyVectors {
 	t.Helper()
-	path := filepath.Join("..", "testing", "vectors", "senderkeys.json")
+	path := filepath.Join("..", "testing", "vectors", filename)
 	raw, err := os.ReadFile(path)
 	require.NoError(t, err)
 
