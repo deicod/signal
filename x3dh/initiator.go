@@ -11,11 +11,29 @@ import (
 // Initiator performs the initiator side of the X3DH handshake.
 type Initiator struct {
 	identityKey *keys.IdentityKeyPair
+	// generateEphemeral allows deterministic ephemerals for tests or custom callers.
+	generateEphemeral func() (*signalcrypto.KeyPair, error)
+	// kyberEncapsulate allows deterministic PQ encapsulation for tests or custom callers.
+	kyberEncapsulate func(publicKey []byte) ([]byte, []byte, error)
 }
 
 // NewInitiator constructs an initiator with the given identity key pair.
 func NewInitiator(identityKey *keys.IdentityKeyPair) *Initiator {
-	return &Initiator{identityKey: identityKey}
+	return NewInitiatorWithGenerator(identityKey, signalcrypto.GenerateKeyPair)
+}
+
+// NewInitiatorWithGenerator constructs an initiator with a custom ephemeral generator.
+func NewInitiatorWithGenerator(identityKey *keys.IdentityKeyPair, generateEphemeral func() (*signalcrypto.KeyPair, error)) *Initiator {
+	return NewInitiatorWithGenerators(identityKey, generateEphemeral, nil)
+}
+
+// NewInitiatorWithGenerators constructs an initiator with custom ephemeral and Kyber generators.
+func NewInitiatorWithGenerators(identityKey *keys.IdentityKeyPair, generateEphemeral func() (*signalcrypto.KeyPair, error), kyberEncapsulate func(publicKey []byte) ([]byte, []byte, error)) *Initiator {
+	return &Initiator{
+		identityKey:       identityKey,
+		generateEphemeral: generateEphemeral,
+		kyberEncapsulate:  kyberEncapsulate,
+	}
 }
 
 // ProcessPreKeyBundle derives the shared secret and initial message for the responder.
@@ -30,7 +48,11 @@ func (x *Initiator) ProcessPreKeyBundle(bundle *keys.PreKeyBundle) (*Result, err
 		return nil, fmt.Errorf("initiator: invalid bundle: %w", err)
 	}
 
-	ephemeral, err := signalcrypto.GenerateKeyPair()
+	generator := x.generateEphemeral
+	if generator == nil {
+		generator = signalcrypto.GenerateKeyPair
+	}
+	ephemeral, err := generator()
 	if err != nil {
 		return nil, fmt.Errorf("initiator: generate ephemeral: %w", err)
 	}
@@ -65,7 +87,11 @@ func (x *Initiator) ProcessPreKeyBundle(bundle *keys.PreKeyBundle) (*Result, err
 	var kyberCiphertext []byte
 
 	if bundle.KyberPreKeyID != nil {
-		kyberSS, kyberCT, err := signalcrypto.Kyber1024Encapsulate(bundle.KyberPreKeyPublic)
+		encapsulate := x.kyberEncapsulate
+		if encapsulate == nil {
+			encapsulate = signalcrypto.Kyber1024Encapsulate
+		}
+		kyberSS, kyberCT, err := encapsulate(bundle.KyberPreKeyPublic)
 		if err != nil {
 			return nil, fmt.Errorf("initiator: kyber encapsulate: %w", err)
 		}
@@ -90,11 +116,11 @@ func (x *Initiator) ProcessPreKeyBundle(bundle *keys.PreKeyBundle) (*Result, err
 	signalcrypto.ZeroBytes(ikm)
 
 	msg := Message{
-		IdentityKey:    x.identityKey.PublicKey,
-		EphemeralKey:   ephemeral.PublicKey,
-		PreKeyID:       bundle.PreKeyID,
-		SignedPreKeyID: bundle.SignedPreKeyID,
-		KyberPreKeyID:  bundle.KyberPreKeyID,
+		IdentityKey:     x.identityKey.PublicKey,
+		EphemeralKey:    ephemeral.PublicKey,
+		PreKeyID:        bundle.PreKeyID,
+		SignedPreKeyID:  bundle.SignedPreKeyID,
+		KyberPreKeyID:   bundle.KyberPreKeyID,
 		KyberCiphertext: kyberCiphertext,
 	}
 

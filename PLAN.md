@@ -37,14 +37,14 @@ Reference target (to lock): https://github.com/signalapp/libsignal commit `cfaf2
 - [x] Verify DH ordering and inclusion rules match the spec (including optional one-time pre-key).
 - [x] Align the X3DH initial message fields with the wire PreKeySignalMessage format.
 - [x] Confirm HKDF info string and input concatenation match libsignal expectations.
-- [ ] Add X3DH interoperability vectors under `testing/vectors/`.
+- [x] Add X3DH interoperability vectors under `testing/vectors/`.
 
 ## 4. Double Ratchet and Message Encryption
-- [ ] Confirm KDF chain and message key derivation strings match libsignal.
-- [ ] Switch message encryption to the spec’s cipher/MAC construction (AES-CBC + HMAC or required AEAD).
-- [ ] Implement MAC creation/verification and any required truncation rules.
-- [ ] Ensure replay protection rules match spec (duplicate counters, overflow handling).
-- [ ] Add ratchet message vectors and integration tests for ordering/loss/duplication.
+- [x] Confirm KDF chain and message key derivation strings match libsignal.
+- [x] Switch message encryption to the spec’s cipher/MAC construction (AES-CBC + HMAC or required AEAD).
+- [x] Implement MAC creation/verification and any required truncation rules.
+- [x] Ensure replay protection rules match spec (duplicate counters, overflow handling).
+- [x] Add ratchet message vectors and integration tests for ordering/loss/duplication.
 
 ## 5. Session and Cipher Wire Integration
 - [x] Add wire message parsing/serialization alongside the existing internal envelope.
@@ -80,8 +80,8 @@ Reference target (to lock): https://github.com/signalapp/libsignal commit `cfaf2
 
 ## 6. Group Messaging (Sender Keys)
 - [x] Replace `senderkeys` custom magic-byte format with protobuf wire encoding.
-- [ ] Verify sender key ratchet, signature scheme, and MAC rules match spec.
-- [ ] Add sender key distribution/message vectors and interoperability tests.
+- [x] Verify sender key ratchet, signature scheme, and MAC rules match spec.
+- [x] Add sender key distribution/message vectors and interoperability tests.
 
 ## 7. Sealed Sender (If Required)
 - [ ] Decide on sealed sender support and scope (certs, sender info, anonymous sender).
@@ -90,15 +90,16 @@ Reference target (to lock): https://github.com/signalapp/libsignal commit `cfaf2
 
 ## 8. Storage and Security Hardening
 - [ ] Add store requirements for signed pre-key expiry and session limits.
-- [ ] Enforce public key validation everywhere inputs enter the protocol.
+- [x] Enforce public key validation everywhere inputs enter the protocol.
 - [ ] Expand key zeroization beyond X3DH (ratchet, sender keys, session teardown).
 - [ ] Review constant-time comparisons in all authentication paths.
 
 ## 9. Test Vectors and Interop Harness
 - [ ] Add official vectors for X3DH, Double Ratchet, and sender keys in `testing/vectors/`.
-- [ ] Implement a vector runner to validate serialization and cryptographic outputs.
+- [x] Add deterministic X3DH/ratchet vector files for the current implementation.
+- [x] Implement a vector runner to validate serialization and cryptographic outputs.
 - [ ] Add cross-implementation fixtures (generated from libsignal) where possible.
-- [ ] Add fuzzing for wire deserialization and message processing.
+- [x] Add fuzzing for wire deserialization and message processing.
 
 ## 10. Docs and Migration
 - [ ] Update README and GoDoc to state wire compatibility and supported versions.

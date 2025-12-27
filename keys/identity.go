@@ -70,5 +70,8 @@ func FromBytes(curvePub, signingPub []byte) (IdentityKey, error) {
 	}
 	copy(ik.PublicKey[:], curvePub)
 	copy(ik.SigningPublic[:], signingPub)
+	if err := signalcrypto.ValidatePublicKey(ik.PublicKey); err != nil {
+		return ik, fmt.Errorf("identity: invalid public key")
+	}
 	return ik, nil
 }

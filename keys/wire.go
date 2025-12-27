@@ -3,6 +3,7 @@ package keys
 import (
 	"fmt"
 
+	signalcrypto "github.com/deicod/signal/crypto"
 	signalerrors "github.com/deicod/signal/errors"
 )
 
@@ -27,5 +28,8 @@ func DeserializeWirePublicKey(data []byte) ([32]byte, error) {
 		return out, fmt.Errorf("%w: unsupported wire key type 0x%02x", signalerrors.ErrInvalidKey, data[0])
 	}
 	copy(out[:], data[1:])
+	if err := signalcrypto.ValidatePublicKey(out); err != nil {
+		return out, fmt.Errorf("%w: invalid wire public key", signalerrors.ErrInvalidKey)
+	}
 	return out, nil
 }

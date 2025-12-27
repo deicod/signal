@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	signalcrypto "github.com/deicod/signal/crypto"
+	signalerrors "github.com/deicod/signal/errors"
 )
 
 const serializeVersion byte = 1
@@ -33,6 +34,9 @@ func DeserializeIdentityKey(data []byte) (*IdentityKey, error) {
 	var k IdentityKey
 	copy(k.PublicKey[:], data[1:33])
 	copy(k.SigningPublic[:], data[33:])
+	if err := signalcrypto.ValidatePublicKey(k.PublicKey); err != nil {
+		return nil, fmt.Errorf("%w: identity key invalid", signalerrors.ErrInvalidKey)
+	}
 	return &k, nil
 }
 
@@ -59,6 +63,9 @@ func DeserializePreKey(data []byte) (*PreKey, error) {
 	id := binary.BigEndian.Uint32(data[1:5])
 	var pub [32]byte
 	copy(pub[:], data[5:])
+	if err := signalcrypto.ValidatePublicKey(pub); err != nil {
+		return nil, fmt.Errorf("%w: pre-key invalid", signalerrors.ErrInvalidKey)
+	}
 	return &PreKey{
 		ID: id,
 		KeyPair: &signalcrypto.KeyPair{
@@ -101,6 +108,9 @@ func DeserializeSignedPreKey(data []byte) (*SignedPreKey, error) {
 	id := binary.BigEndian.Uint32(data[1:5])
 	var pub [32]byte
 	copy(pub[:], data[7:39])
+	if err := signalcrypto.ValidatePublicKey(pub); err != nil {
+		return nil, fmt.Errorf("%w: signed pre-key invalid", signalerrors.ErrInvalidKey)
+	}
 	sig := make([]byte, sigLen)
 	copy(sig, data[39:])
 	return &SignedPreKey{

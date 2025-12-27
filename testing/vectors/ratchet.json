@@ -1,0 +1,55 @@
+{
+  "x3dh": {
+    "initiator": {
+      "identity_private": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "ephemeral_private": "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f"
+    },
+    "responder": {
+      "identity_private": "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100",
+      "signed_pre_key_id": 7,
+      "signed_pre_key_private": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+      "signed_pre_key_signature": "b257cf8997cf2e80e6d2c960393f34331ea2f559e5f65c108d59aa903f86f5c16c7288eff5d3cdd908d183475664ff4441ef2346a6c10f80ccb2cb871c023408",
+      "pre_key_id": 11,
+      "pre_key_private": "303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f",
+      "kyber_pre_key_id": null,
+      "kyber_public": "",
+      "kyber_private": "",
+      "kyber_signature": ""
+    },
+    "responder_send_private": "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f",
+    "shared_secret": "660c2f82870d1d8d32e25fde25b283e3a5f27e44864dfa69d9566cade305c845"
+  },
+  "associated_data": "058f40c5adb68f25624ae5b214ea767a6ec94d829d3d7b5e1ad1ba6f3e2138285f0587968c1c1642bd0600f6ad869b88f92c9623d0dfc44f01deffe21c9add3dca5f",
+  "initiator_messages": [
+    {
+      "plaintext": "616c6963652d31",
+      "header": "d89e3bad79437dbed9f843418304f460ff05c7fe81fe4a9577a804cb9367ff660000000000000000",
+      "ciphertext": "e92ffa8cac883d809f9d553a7ed9ed6f51d4b5e8c07dab29a65f52cd22409f9d6cedb9"
+    },
+    {
+      "plaintext": "616c6963652d32",
+      "header": "d89e3bad79437dbed9f843418304f460ff05c7fe81fe4a9577a804cb9367ff660000000000000001",
+      "ciphertext": "d6f8b630a84bff9f978ad1088372b35ea953734adabf5db54be64aeedaf5a84d175b31"
+    },
+    {
+      "plaintext": "616c6963652d33",
+      "header": "d89e3bad79437dbed9f843418304f460ff05c7fe81fe4a9577a804cb9367ff660000000000000002",
+      "ciphertext": "398003635f8292ea323a7ce664aba93710e6a518c78928b307157b784bd546ea5237f7"
+    }
+  ],
+  "responder_messages": [
+    {
+      "plaintext": "626f622d31",
+      "header": "79a631eede1bf9c98f12032cdeadd0e7a079398fc786b88cc846ec89af85a51a0000000000000000",
+      "ciphertext": "67263f74f12ae4316d076c9e16086a963d77e84eab700cf8828547dc407e00049b"
+    }
+  ],
+  "delivery_to_responder": [
+    1,
+    0,
+    2
+  ],
+  "delivery_to_initiator": [
+    0
+  ]
+}

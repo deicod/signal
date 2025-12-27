@@ -85,6 +85,12 @@ func (b *PreKeyBundle) Validate() error {
 	if b.SignedPreKeyID == 0 {
 		return fmt.Errorf("%w: signed pre-key id must be set", signalerrors.ErrInvalidKey)
 	}
+	if !signalcrypto.IsValidPublicKey(b.IdentityKey.PublicKey) {
+		return fmt.Errorf("%w: invalid identity public key", signalerrors.ErrInvalidKey)
+	}
+	if !signalcrypto.IsValidPublicKey(b.SignedPreKeyPublic) {
+		return fmt.Errorf("%w: invalid signed pre-key public key", signalerrors.ErrInvalidKey)
+	}
 
 	// Verify signed pre-key signature.
 	if !b.IdentityKey.Verify(SerializeWirePublicKey(b.SignedPreKeyPublic), b.SignedPreKeySignature) {
@@ -94,6 +100,9 @@ func (b *PreKeyBundle) Validate() error {
 	// If a one-time pre-key is present, ensure both ID and key are set.
 	if (b.PreKeyID == nil) != (b.PreKeyPublic == nil) {
 		return fmt.Errorf("%w: pre-key id/key mismatch", signalerrors.ErrInvalidMessage)
+	}
+	if b.PreKeyPublic != nil && !signalcrypto.IsValidPublicKey(*b.PreKeyPublic) {
+		return fmt.Errorf("%w: invalid pre-key public key", signalerrors.ErrInvalidKey)
 	}
 
 	if (b.KyberPreKeyID == nil) != (len(b.KyberPreKeyPublic) == 0) {

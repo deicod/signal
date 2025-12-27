@@ -25,7 +25,8 @@ func generateSenderKeyID() (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	return binary.BigEndian.Uint32(b), nil
+	// libsignal uses 31-bit chain IDs (Java compat); clear the high bit.
+	return binary.BigEndian.Uint32(b) & 0x7fffffff, nil
 }
 
 func generateSenderKeySeed() ([senderKeySeedSize]byte, error) {

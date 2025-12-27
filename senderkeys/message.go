@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	senderKeyMessageVersion uint8 = 3
-	senderKeySignatureSize        = 64
+	senderKeyMessageVersion = uint8(3)
+	senderKeySignatureSize  = 64
 )
 
 type distributionMessage struct {

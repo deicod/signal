@@ -14,6 +14,8 @@ import (
 // invalid or low-order.
 var ErrInvalidPublicKey = errors.New("curve25519: invalid public key")
 
+var validationScalar = [32]byte{1}
+
 // KeyPair holds a Curve25519 key pair.
 type KeyPair struct {
 	PublicKey  [32]byte
@@ -54,6 +56,24 @@ func DH(privateKey, publicKey [32]byte) ([32]byte, error) {
 	}
 
 	return out, nil
+}
+
+// ValidatePublicKey rejects low-order Curve25519 public keys.
+func ValidatePublicKey(publicKey [32]byte) error {
+	if !IsValidPublicKey(publicKey) {
+		return ErrInvalidPublicKey
+	}
+	return nil
+}
+
+// IsValidPublicKey returns true if the Curve25519 public key is not low-order.
+func IsValidPublicKey(publicKey [32]byte) bool {
+	shared, err := curve25519.X25519(validationScalar[:], publicKey[:])
+	if err != nil {
+		return false
+	}
+	var zero [32]byte
+	return subtle.ConstantTimeCompare(shared, zero[:]) != 1
 }
 
 func scalarBaseMult(privateKey [32]byte) ([32]byte, error) {

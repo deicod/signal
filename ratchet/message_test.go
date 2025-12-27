@@ -1,6 +1,7 @@
 package ratchet
 
 import (
+	"math"
 	"testing"
 
 	signalerrors "github.com/deicod/signal/errors"
@@ -56,6 +57,32 @@ func TestDecryptInvalidMACDoesNotAdvanceState(t *testing.T) {
 	pt, err := bob.Decrypt(msg, ad)
 	require.NoError(t, err)
 	require.Equal(t, []byte("hello"), pt)
+}
+
+func TestEncryptCounterOverflow(t *testing.T) {
+	alice, _, _, _ := buildTestStates(t)
+	alice.Ns = math.MaxUint32
+
+	_, err := alice.Encrypt([]byte("overflow"), []byte("ad"))
+	require.ErrorIs(t, err, signalerrors.ErrCounterOverflow)
+}
+
+func TestDecryptCounterOverflow(t *testing.T) {
+	alice, _, initRes, _ := buildTestStates(t)
+	require.NotNil(t, alice.DHr)
+	require.NotZero(t, alice.CKr)
+
+	alice.Nr = math.MaxUint32
+	msg := &Message{
+		Header: Header{
+			DH: *alice.DHr,
+			N:  math.MaxUint32,
+		},
+		Ciphertext: make([]byte, 12),
+	}
+
+	_, err := alice.Decrypt(msg, initRes.AssociatedData)
+	require.ErrorIs(t, err, signalerrors.ErrCounterOverflow)
 }
 
 func TestSkippedKeyNotConsumedOnInvalidMAC(t *testing.T) {

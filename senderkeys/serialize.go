@@ -108,7 +108,7 @@ func DeserializeRecord(data []byte) (*Record, error) {
 	}
 
 	for i := 0; i < stateCount; i++ {
-		var messageVersion uint8 = senderKeyMessageVersion
+		messageVersion := senderKeyMessageVersion
 		var distributionID [distributionIDSize]byte
 
 		if version == recordSerializeVersion {

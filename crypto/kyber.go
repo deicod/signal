@@ -50,6 +50,24 @@ func Kyber1024Encapsulate(publicKey []byte) ([]byte, []byte, error) {
 	return sharedSecret, ciphertext, nil
 }
 
+// Kyber1024EncapsulateDeterministically encapsulates using a fixed seed.
+func Kyber1024EncapsulateDeterministically(publicKey []byte, seed []byte) ([]byte, []byte, error) {
+	pk, err := unmarshalKyberPublicKey(publicKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(seed) != kyber1024.EncapsulationSeedSize {
+		return nil, nil, fmt.Errorf("kyber1024: encapsulation seed length %d", len(seed))
+	}
+	ct, ss, err := kyberScheme().EncapsulateDeterministically(pk, seed)
+	if err != nil {
+		return nil, nil, fmt.Errorf("kyber1024: encapsulate deterministically: %w", err)
+	}
+	ciphertext := append([]byte{kyber1024KeyType}, ct...)
+	sharedSecret := append([]byte(nil), ss...)
+	return sharedSecret, ciphertext, nil
+}
+
 // Kyber1024Decapsulate decapsulates a shared secret from the serialized private key and ciphertext.
 func Kyber1024Decapsulate(privateKey []byte, ciphertext []byte) ([]byte, error) {
 	sk, err := unmarshalKyberPrivateKey(privateKey)

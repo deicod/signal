@@ -36,3 +36,17 @@ func TestDeriveMessageKeys(t *testing.T) {
 	require.Equal(t, "9c79e3278033b157e764a04fafd14c38f2d972bdaf7d0c420a64c189574d4e15", hex.EncodeToString(auth))
 	require.Equal(t, "07f0996c3d506daef3577e16fd32928a", hex.EncodeToString(iv))
 }
+
+func TestKDFChainMatchesLibsignalVectors(t *testing.T) {
+	seed := mustHex32(t, "8ab72d6f4cc5ac0d387eaf463378ddb28edd07385b1cb01250c715982e7ad48f")
+	expectedCipherKey := mustHex32(t, "bf51e9d75e0e31031051f82a2491ffc084fa298b7793bd9db620056febf45217")
+	expectedMacKey := mustHex32(t, "c6c77d6a73a354337a56435e34607dfe48e3ace14e77314dc6abc172e7a7030b")
+	expectedNextChainKey := mustHex32(t, "28e8f8fee54b801eef7c5cfb2f17f32c7b334485bbb70fac6ec10342a246d15d")
+
+	nextCK, mk := KDFChain(seed)
+	require.Equal(t, expectedNextChainKey, nextCK)
+
+	encKey, macKey, _ := DeriveMessageKeys(mk)
+	require.Equal(t, expectedCipherKey[:], encKey)
+	require.Equal(t, expectedMacKey[:], macKey)
+}

@@ -118,6 +118,76 @@ func TestSenderKeysRotation(t *testing.T) {
 	require.Equal(t, []byte("new"), pt)
 }
 
+func TestSenderKeyDistributionPersistsFields(t *testing.T) {
+	aliceID, _ := keys.GenerateIdentityKeyPair()
+	aliceStore := memory.NewStore(aliceID, 1)
+
+	name := store.SenderKeyName{
+		Group:  "group-1",
+		Sender: store.Address{Name: "alice", Device: 1},
+	}
+
+	dist, err := NewBuilder(aliceStore, name).Create()
+	require.NoError(t, err)
+
+	parsed, err := parseDistributionMessage(dist)
+	require.NoError(t, err)
+	require.Equal(t, senderKeyMessageVersion, parsed.messageVersion)
+	require.Equal(t, uint32(0), parsed.iteration)
+
+	rec, err := aliceStore.LoadSenderKey(name)
+	require.NoError(t, err)
+	require.NotNil(t, rec)
+
+	record, err := DeserializeRecord(rec.Data)
+	require.NoError(t, err)
+	state, err := record.current()
+	require.NoError(t, err)
+
+	require.Equal(t, parsed.distributionID, state.distributionID)
+	require.Equal(t, parsed.keyID, state.keyID)
+	require.Equal(t, parsed.iteration, state.chainIteration)
+	require.Equal(t, parsed.messageVersion, state.messageVersion)
+}
+
+func TestSenderKeyTamperSignatureRejected(t *testing.T) {
+	aliceID, _ := keys.GenerateIdentityKeyPair()
+	bobID, _ := keys.GenerateIdentityKeyPair()
+	aliceStore := memory.NewStore(aliceID, 1)
+	bobStore := memory.NewStore(bobID, 2)
+
+	name := store.SenderKeyName{
+		Group:  "group-1",
+		Sender: store.Address{Name: "alice", Device: 1},
+	}
+
+	dist, err := NewBuilder(aliceStore, name).Create()
+	require.NoError(t, err)
+	require.NoError(t, NewBuilder(bobStore, name).Process(dist))
+
+	aliceCipher := NewCipher(aliceStore, name)
+	bobCipher := NewCipher(bobStore, name)
+
+	ct, err := aliceCipher.Encrypt([]byte("hi"))
+	require.NoError(t, err)
+
+	msg, _, err := parseSenderKeyMessage(ct)
+	require.NoError(t, err)
+	require.NotEmpty(t, msg.ciphertext)
+	msg.ciphertext[0] ^= 0xFF
+
+	_, err = bobCipher.Decrypt(msg.serialize())
+	require.ErrorIs(t, err, signalerrors.ErrInvalidSignature)
+}
+
+func TestSenderKeyChainIDIs31Bit(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		id, err := generateSenderKeyID()
+		require.NoError(t, err)
+		require.Zero(t, id&0x80000000)
+	}
+}
+
 func TestSenderKeysMaxSkipExceeded(t *testing.T) {
 	st := &state{}
 	_, err := getSenderMessageKey(st, maxMessageKeysPerState+1)

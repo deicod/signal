@@ -43,11 +43,21 @@ type SkippedKey struct {
 
 // InitializeState constructs a Double Ratchet state from X3DH output.
 func InitializeState(x3 *x3dh.Result, isInitiator bool) (*State, error) {
+	return InitializeStateWithGenerator(x3, isInitiator, nil)
+}
+
+// InitializeStateWithGenerator constructs a Double Ratchet state using a custom DH generator.
+// A nil generator defaults to crypto/rand-backed Curve25519 key generation.
+func InitializeStateWithGenerator(x3 *x3dh.Result, isInitiator bool, generateDH func() (*signalcrypto.KeyPair, error)) (*State, error) {
 	if x3 == nil {
 		return nil, errors.New("ratchet: x3dh result required")
 	}
 	if x3.SharedSecret == ([32]byte{}) {
 		return nil, errors.New("ratchet: shared secret must be set")
+	}
+
+	if generateDH == nil {
+		generateDH = signalcrypto.GenerateKeyPair
 	}
 
 	state := &State{
@@ -66,7 +76,7 @@ func InitializeState(x3 *x3dh.Result, isInitiator bool) (*State, error) {
 
 		if x3.InitialChainKey != nil {
 			state.CKr = *x3.InitialChainKey
-			state.DHs, err = signalcrypto.GenerateKeyPair()
+			state.DHs, err = generateDH()
 			if err != nil {
 				return nil, fmt.Errorf("ratchet: generate initiator dh: %w", err)
 			}
@@ -74,7 +84,7 @@ func InitializeState(x3 *x3dh.Result, isInitiator bool) (*State, error) {
 			kp := *x3.LocalEphemeral
 			state.DHs = &kp
 		} else {
-			state.DHs, err = signalcrypto.GenerateKeyPair()
+			state.DHs, err = generateDH()
 			if err != nil {
 				return nil, fmt.Errorf("ratchet: generate initiator dh: %w", err)
 			}
@@ -99,7 +109,7 @@ func InitializeState(x3 *x3dh.Result, isInitiator bool) (*State, error) {
 			kp := *x3.LocalRatchetKey
 			state.DHs = &kp
 		} else {
-			dh, err := signalcrypto.GenerateKeyPair()
+			dh, err := generateDH()
 			if err != nil {
 				return nil, fmt.Errorf("ratchet: generate responder dh: %w", err)
 			}
@@ -122,7 +132,7 @@ func InitializeState(x3 *x3dh.Result, isInitiator bool) (*State, error) {
 			state.CKr = ckr
 
 			// Prepare a fresh DHs for sending chain.
-			newDH, err := signalcrypto.GenerateKeyPair()
+			newDH, err := generateDH()
 			if err != nil {
 				return nil, fmt.Errorf("ratchet: generate send dh: %w", err)
 			}
