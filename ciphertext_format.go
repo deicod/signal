@@ -20,8 +20,8 @@ const (
 
 const (
 	legacyEnvelopeVersion    byte = 1
-	legacyEnvelopeTypeSignal      = 1
-	legacyEnvelopeTypePreKey      = 2
+	legacyEnvelopeTypeSignal byte = 1
+	legacyEnvelopeTypePreKey byte = 2
 )
 
 // DetectCiphertextFormat inspects ciphertext bytes and classifies them as wire or legacy envelope.

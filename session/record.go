@@ -7,6 +7,7 @@ import (
 	signalerrors "github.com/deicod/signal/errors"
 	"github.com/deicod/signal/keys"
 	"github.com/deicod/signal/ratchet"
+	"github.com/deicod/signal/spqr"
 )
 
 // DefaultMaxArchivedSessions bounds archived sessions to control memory usage.
@@ -218,7 +219,7 @@ const (
 )
 
 const (
-	sessionSerializeVersion byte = 1
+	sessionSerializeVersion byte = 2
 	sessionIdentitySize          = 1 + 32 + 32
 )
 
@@ -243,8 +244,12 @@ func serializeSession(s *Session) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	pqrBytes, err := s.pqrState.Serialize()
+	if err != nil {
+		return nil, err
+	}
 
-	out := make([]byte, 0, 1+1+sessionIdentitySize*2+4+len(s.associatedData)+4+len(stateBytes)+4+len(s.previousStates)*(4+64))
+	out := make([]byte, 0, 1+1+sessionIdentitySize*2+4+len(s.associatedData)+4+len(pqrBytes)+4+len(stateBytes)+4+len(s.previousStates)*(4+64))
 	out = append(out, sessionSerializeVersion)
 	version := s.version
 	if version == 0 {
@@ -256,6 +261,9 @@ func serializeSession(s *Session) ([]byte, error) {
 
 	out = binary.BigEndian.AppendUint32(out, uint32(len(s.associatedData)))
 	out = append(out, s.associatedData...)
+
+	out = binary.BigEndian.AppendUint32(out, uint32(len(pqrBytes)))
+	out = append(out, pqrBytes...)
 
 	out = binary.BigEndian.AppendUint32(out, uint32(len(stateBytes)))
 	out = append(out, stateBytes...)
@@ -279,14 +287,14 @@ func serializeSession(s *Session) ([]byte, error) {
 }
 
 func deserializeSession(data []byte) (*Session, error) {
-	if len(data) < 1+1+sessionIdentitySize*2+4+4+4 {
+	if len(data) < 1+1+sessionIdentitySize*2+4 {
 		return nil, fmt.Errorf("%w: record: session too short", signalerrors.ErrInvalidMessage)
 	}
 
 	pos := 0
 	ver := data[pos]
 	pos++
-	if ver != sessionSerializeVersion {
+	if ver != 1 && ver != sessionSerializeVersion {
 		return nil, fmt.Errorf("%w: record: session unsupported version %d", signalerrors.ErrInvalidMessage, ver)
 	}
 	sessionVersion := data[pos]
@@ -295,11 +303,17 @@ func deserializeSession(data []byte) (*Session, error) {
 		sessionVersion = CurrentVersion
 	}
 
+	if pos+sessionIdentitySize > len(data) {
+		return nil, fmt.Errorf("%w: record: session truncated local identity", signalerrors.ErrInvalidMessage)
+	}
 	localID, err := keys.DeserializeIdentityKey(data[pos : pos+sessionIdentitySize])
 	if err != nil {
 		return nil, fmt.Errorf("%w: record: %v", signalerrors.ErrInvalidMessage, err)
 	}
 	pos += sessionIdentitySize
+	if pos+sessionIdentitySize > len(data) {
+		return nil, fmt.Errorf("%w: record: session truncated remote identity", signalerrors.ErrInvalidMessage)
+	}
 	remoteID, err := keys.DeserializeIdentityKey(data[pos : pos+sessionIdentitySize])
 	if err != nil {
 		return nil, fmt.Errorf("%w: record: %v", signalerrors.ErrInvalidMessage, err)
@@ -316,6 +330,25 @@ func deserializeSession(data []byte) (*Session, error) {
 	}
 	ad := append([]byte(nil), data[pos:pos+adLen]...)
 	pos += adLen
+
+	var pqrState *spqr.State
+	if ver == sessionSerializeVersion {
+		if pos+4 > len(data) {
+			return nil, fmt.Errorf("%w: record: session truncated pqr length", signalerrors.ErrInvalidMessage)
+		}
+		pqrLen := int(binary.BigEndian.Uint32(data[pos : pos+4]))
+		pos += 4
+		if pqrLen < 0 || pos+pqrLen > len(data) {
+			return nil, fmt.Errorf("%w: record: session invalid pqr length", signalerrors.ErrInvalidMessage)
+		}
+		if pqrLen > 0 {
+			pqrState, err = spqr.DeserializeState(data[pos : pos+pqrLen])
+			if err != nil {
+				return nil, err
+			}
+		}
+		pos += pqrLen
+	}
 
 	if pos+4 > len(data) {
 		return nil, fmt.Errorf("%w: record: session truncated state length", signalerrors.ErrInvalidMessage)
@@ -367,6 +400,7 @@ func deserializeSession(data []byte) (*Session, error) {
 
 	return &Session{
 		ratchetState:   st,
+		pqrState:       pqrState,
 		localIdentity:  localID,
 		remoteIdentity: remoteID,
 		associatedData: ad,

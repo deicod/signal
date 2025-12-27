@@ -68,10 +68,12 @@ func TestInitiatorDerivesSharedSecretWithAndWithoutPreKey(t *testing.T) {
 			kyberSS, err := signalcrypto.Kyber1024Decapsulate(kyber.KeyPair.PrivateKey, result.InitialMessage.KyberCiphertext)
 			require.NoError(t, err)
 			ikm = append(ikm, kyberSS...)
-			expectedRoot, expectedChain, err := derivePQSecret(ikm)
+			expectedRoot, expectedChain, expectedPQR, err := derivePQSecret(ikm)
 			require.NoError(t, err)
 			require.Equal(t, expectedRoot, result.SharedSecret)
 			require.Equal(t, expectedChain, *result.InitialChainKey)
+			require.NotNil(t, result.PQRKey)
+			require.Equal(t, expectedPQR, *result.PQRKey)
 			require.Equal(t, AssociatedData(initID.PublicKey, respID.PublicKey), result.AssociatedData)
 		})
 	}

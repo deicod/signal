@@ -20,6 +20,7 @@ type Message struct {
 type Result struct {
 	SharedSecret     [32]byte
 	InitialChainKey  *[32]byte
+	PQRKey           *[32]byte
 	AssociatedData   []byte
 	RemoteIdentity   keys.IdentityKey
 	InitialMessage   Message

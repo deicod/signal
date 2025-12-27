@@ -78,6 +78,7 @@ func (r *Responder) ProcessInitialMessage(msg *Message) (*Result, error) {
 
 	var shared [32]byte
 	var initialChain *[32]byte
+	var pqrKey *[32]byte
 
 	if msg.KyberPreKeyID != nil || len(msg.KyberCiphertext) > 0 {
 		if msg.KyberPreKeyID == nil || len(msg.KyberCiphertext) == 0 {
@@ -99,12 +100,13 @@ func (r *Responder) ProcessInitialMessage(msg *Message) (*Result, error) {
 		}
 		ikmPQ := append(append([]byte{}, discontinuity...), ikm...)
 		ikmPQ = append(ikmPQ, kyberSS...)
-		root, chain, err := derivePQSecret(ikmPQ)
+		root, chain, pqr, err := derivePQSecret(ikmPQ)
 		if err != nil {
 			return nil, fmt.Errorf("responder: hkdf: %w", err)
 		}
 		shared = root
 		initialChain = &chain
+		pqrKey = &pqr
 		signalcrypto.ZeroBytes(kyberSS)
 		signalcrypto.ZeroBytes(ikmPQ)
 	} else {
@@ -119,6 +121,7 @@ func (r *Responder) ProcessInitialMessage(msg *Message) (*Result, error) {
 	return &Result{
 		SharedSecret:    shared,
 		InitialChainKey: initialChain,
+		PQRKey:          pqrKey,
 		AssociatedData:  AssociatedData(msg.IdentityKey, r.identityKey.PublicKey),
 		RemoteIdentity:  msg.IdentityKey,
 		InitialMessage:  *msg,

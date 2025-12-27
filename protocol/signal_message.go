@@ -51,6 +51,7 @@ func ParseSignalMessage(data []byte) (*SignalMessage, error) {
 	return &SignalMessage{inner: msg}, nil
 }
 
+// DeserializeSignalMessage deserializes a SignalMessage from wire bytes.
 // Deprecated: use ParseSignalMessage instead.
 func DeserializeSignalMessage(data []byte) (*SignalMessage, error) {
 	return ParseSignalMessage(data)

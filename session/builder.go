@@ -59,6 +59,9 @@ func (b *Builder) ProcessPreKeyBundle(bundle *keys.PreKeyBundle) (*Session, *x3d
 	if err != nil {
 		return nil, nil, err
 	}
+	if err := initSessionPQR(session, result, true); err != nil {
+		return nil, nil, err
+	}
 	setSessionCiphertextVersion(session, ciphertextVersionFromX3DH(&result.InitialMessage))
 
 	if err := b.store.SaveIdentity(b.remoteAddress, &bundle.IdentityKey); err != nil {
@@ -110,6 +113,9 @@ func (b *Builder) ProcessPreKeyMessage(msg *x3dh.Message) (*Session, []byte, err
 
 	session, err := NewSession(state, &identityKey.PublicKey, &msg.IdentityKey, result.AssociatedData)
 	if err != nil {
+		return nil, nil, err
+	}
+	if err := initSessionPQR(session, result, false); err != nil {
 		return nil, nil, err
 	}
 	setSessionCiphertextVersion(session, ciphertextVersionFromX3DH(msg))

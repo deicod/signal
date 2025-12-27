@@ -1,10 +1,14 @@
 package wire
 
 const (
-	CiphertextMessageCurrentVersion  uint8 = 4
+	// CiphertextMessageCurrentVersion is the current 1:1 ciphertext wire version.
+	CiphertextMessageCurrentVersion uint8 = 4
+	// CiphertextMessagePreKyberVersion is the minimum version before Kyber support.
 	CiphertextMessagePreKyberVersion uint8 = 3
-	SenderKeyMessageCurrentVersion   uint8 = 3
+	// SenderKeyMessageCurrentVersion is the current group message wire version.
+	SenderKeyMessageCurrentVersion uint8 = 3
 
+	// SignalMessageMACLength is the size of the Signal message MAC suffix.
 	SignalMessageMACLength = 8
 )
 

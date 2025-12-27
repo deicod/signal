@@ -10,9 +10,10 @@ import (
 	"github.com/deicod/signal/keys"
 )
 
-const senderKeyMessageVersion uint8 = 3
-
-const senderKeySignatureSize = 64
+const (
+	senderKeyMessageVersion = uint8(3)
+	senderKeySignatureSize  = 64
+)
 
 type distributionMessage struct {
 	messageVersion uint8

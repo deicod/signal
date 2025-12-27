@@ -84,6 +84,7 @@ func (x *Initiator) ProcessPreKeyBundle(bundle *keys.PreKeyBundle) (*Result, err
 
 	var shared [32]byte
 	var initialChain *[32]byte
+	var pqrKey *[32]byte
 	var kyberCiphertext []byte
 
 	if bundle.KyberPreKeyID != nil {
@@ -97,12 +98,13 @@ func (x *Initiator) ProcessPreKeyBundle(bundle *keys.PreKeyBundle) (*Result, err
 		}
 		ikmPQ := append(append([]byte{}, discontinuity...), ikm...)
 		ikmPQ = append(ikmPQ, kyberSS...)
-		root, chain, err := derivePQSecret(ikmPQ)
+		root, chain, pqr, err := derivePQSecret(ikmPQ)
 		if err != nil {
 			return nil, fmt.Errorf("initiator: hkdf: %w", err)
 		}
 		shared = root
 		initialChain = &chain
+		pqrKey = &pqr
 		kyberCiphertext = kyberCT
 		signalcrypto.ZeroBytes(kyberSS)
 		signalcrypto.ZeroBytes(ikmPQ)
@@ -127,6 +129,7 @@ func (x *Initiator) ProcessPreKeyBundle(bundle *keys.PreKeyBundle) (*Result, err
 	return &Result{
 		SharedSecret:     shared,
 		InitialChainKey:  initialChain,
+		PQRKey:           pqrKey,
 		AssociatedData:   AssociatedData(x.identityKey.PublicKey, bundle.IdentityKey),
 		RemoteIdentity:   bundle.IdentityKey,
 		InitialMessage:   msg,

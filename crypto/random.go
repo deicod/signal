@@ -10,6 +10,19 @@ import (
 // randReader is the source of randomness; override in tests.
 var randReader = rand.Reader
 
+// SetRandReader overrides the randomness source and returns a restore function.
+// Intended for tests that need deterministic output.
+func SetRandReader(r io.Reader) func() {
+	if r == nil {
+		r = rand.Reader
+	}
+	prev := randReader
+	randReader = r
+	return func() {
+		randReader = prev
+	}
+}
+
 // ErrInvalidLength is returned when a negative or oversized length is requested.
 var ErrInvalidLength = errors.New("random: invalid length")
 

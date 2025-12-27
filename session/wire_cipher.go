@@ -9,6 +9,7 @@ import (
 	"github.com/deicod/signal/keys"
 	wire "github.com/deicod/signal/protocol/wire"
 	"github.com/deicod/signal/ratchet"
+	"github.com/deicod/signal/spqr"
 	"github.com/deicod/signal/store"
 	"github.com/deicod/signal/x3dh"
 )
@@ -137,7 +138,21 @@ func (c *WireCipher) encryptSignalMessage(session *Session, plaintext []byte) (*
 		return nil, err
 	}
 
-	encKey, macKey, iv := ratchet.DeriveMessageKeys(mk)
+	var pqRatchet []byte
+	var salt []byte
+	if session.pqrState != nil {
+		pqrNext := session.pqrState.Clone()
+		if pqrNext == nil {
+			return nil, spqr.ErrStateDecode
+		}
+		pqRatchet, salt, err = pqrNext.Send()
+		if err != nil {
+			return nil, err
+		}
+		session.pqrState = pqrNext
+	}
+
+	encKey, macKey, iv := ratchet.DeriveMessageKeysWithSalt(mk, salt)
 	ciphertext, err := signalcrypto.AESCBCEncrypt(encKey, iv, plaintext)
 	if err != nil {
 		return nil, fmt.Errorf("encrypt: %w", err)
@@ -157,7 +172,7 @@ func (c *WireCipher) encryptSignalMessage(session *Session, plaintext []byte) (*
 		ciphertext,
 		*session.localIdentity,
 		*session.remoteIdentity,
-		nil,
+		pqRatchet,
 	)
 }
 
@@ -235,7 +250,23 @@ func decryptSignalWithSession(session *Session, msg *wire.SignalMessage) ([]byte
 		return nil, err
 	}
 
-	encKey, macKey, iv := ratchet.DeriveMessageKeys(*mk)
+	pqRatchet := msg.PQRatchet()
+	var salt []byte
+	var pqrNext *spqr.State
+	if session.pqrState != nil {
+		pqrNext = session.pqrState.Clone()
+		if pqrNext == nil {
+			return nil, spqr.ErrStateDecode
+		}
+		salt, err = pqrNext.Receive(pqRatchet)
+		if err != nil {
+			return nil, err
+		}
+	} else if len(pqRatchet) > 0 {
+		return nil, fmt.Errorf("%w: missing pq ratchet state", signalerrors.ErrInvalidMessage)
+	}
+
+	encKey, macKey, iv := ratchet.DeriveMessageKeysWithSalt(*mk, salt)
 	ok, err := msg.VerifyMAC(*session.remoteIdentity, *session.localIdentity, macKey)
 	if err != nil {
 		return nil, err
@@ -253,6 +284,9 @@ func decryptSignalWithSession(session *Session, msg *wire.SignalMessage) ([]byte
 		setSessionCiphertextVersion(session, msgVersion)
 	}
 	*state = *next
+	if pqrNext != nil {
+		session.pqrState = pqrNext
+	}
 	return plaintext, nil
 }
 

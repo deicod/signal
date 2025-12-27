@@ -1,6 +1,7 @@
 package signal_test
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"os"
@@ -17,13 +18,14 @@ import (
 )
 
 type libsignalSessionFixture struct {
-	Name                string                `json:"name"`
-	RegistrationIDAlice uint32                `json:"registration_id_alice"`
-	RegistrationIDBob   uint32                `json:"registration_id_bob"`
-	DeviceIDBob         uint32                `json:"device_id_bob"`
-	Alice               libsignalIdentity     `json:"alice"`
-	Bob                 libsignalBobKeys      `json:"bob"`
-	Messages            []libsignalMessageVec `json:"messages"`
+	Name                    string                `json:"name"`
+	RegistrationIDAlice     uint32                `json:"registration_id_alice"`
+	RegistrationIDBob       uint32                `json:"registration_id_bob"`
+	DeviceIDBob             uint32                `json:"device_id_bob"`
+	Alice                   libsignalIdentity     `json:"alice"`
+	Bob                     libsignalBobKeys      `json:"bob"`
+	BobSenderRatchetPrivate string                `json:"bob_sender_ratchet_private"`
+	Messages                []libsignalMessageVec `json:"messages"`
 }
 
 type libsignalIdentity struct {
@@ -72,8 +74,6 @@ func TestLibsignalSessionVectorsParse(t *testing.T) {
 }
 
 func TestLibsignalSessionVectorsDecrypt(t *testing.T) {
-	t.Skip("pq ratchet (spqr) not implemented; enable once supported")
-
 	fixture := loadLibsignalSessionFixture(t)
 
 	bobIdentity := identityKeyPairFromHex(t, fixture.Bob.IdentityPrivate)
@@ -102,7 +102,16 @@ func TestLibsignalSessionVectorsDecrypt(t *testing.T) {
 
 	for _, message := range fixture.Messages {
 		ciphertext := mustHexBytes(t, message.Ciphertext)
+		var restore func()
+		if message.Kind == "prekey" {
+			require.NotEmpty(t, fixture.BobSenderRatchetPrivate)
+			priv := mustHex32Bytes(t, fixture.BobSenderRatchetPrivate)
+			restore = signalcrypto.SetRandReader(bytes.NewReader(priv[:]))
+		}
 		plaintext, err := bobCipher.Decrypt(ciphertext)
+		if restore != nil {
+			restore()
+		}
 		require.NoError(t, err)
 		require.Equal(t, mustHexBytes(t, message.Plaintext), plaintext)
 	}

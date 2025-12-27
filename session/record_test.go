@@ -5,6 +5,7 @@ import (
 
 	signalerrors "github.com/deicod/signal/errors"
 	"github.com/deicod/signal/ratchet"
+	"github.com/deicod/signal/spqr"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,6 +40,13 @@ func TestRecordSerializeRoundTrip(t *testing.T) {
 	state, localID, remoteID := buildRatchetState(t)
 	sess, err := NewSession(state, localID, remoteID, []byte("ad"))
 	require.NoError(t, err)
+	authKey := make([]byte, 32)
+	for i := range authKey {
+		authKey[i] = byte(i)
+	}
+	pqrState, err := spqr.NewState(authKey, spqr.DirectionA2B, spqr.ChainParams{})
+	require.NoError(t, err)
+	sess.pqrState = pqrState
 
 	rec, err := NewRecord(sess, 2)
 	require.NoError(t, err)
@@ -50,6 +58,7 @@ func TestRecordSerializeRoundTrip(t *testing.T) {
 	require.NotNil(t, decoded.Current())
 	require.Equal(t, sess.AssociatedData(), decoded.Current().AssociatedData())
 	require.Equal(t, sess.version, decoded.Current().version)
+	require.NotNil(t, decoded.Current().pqrState)
 }
 
 func TestRecordErrorsOnNil(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/deicod/signal/keys"
 	"github.com/deicod/signal/ratchet"
+	"github.com/deicod/signal/spqr"
 )
 
 // CurrentVersion represents the session version for protocol upgrades.
@@ -13,6 +14,7 @@ const CurrentVersion uint8 = 1
 // Session encapsulates Double Ratchet state along with identity metadata.
 type Session struct {
 	ratchetState   *ratchet.State
+	pqrState       *spqr.State
 	localIdentity  *keys.IdentityKey
 	remoteIdentity *keys.IdentityKey
 	associatedData []byte
@@ -108,6 +110,9 @@ func (s *Session) clone() *Session {
 	}
 	if s.ratchetState != nil {
 		clone.ratchetState = s.ratchetState.Clone()
+	}
+	if s.pqrState != nil {
+		clone.pqrState = s.pqrState.Clone()
 	}
 	if s.localIdentity != nil {
 		li := *s.localIdentity

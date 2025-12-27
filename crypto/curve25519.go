@@ -1,7 +1,6 @@
 package crypto
 
 import (
-	"crypto/rand"
 	"crypto/subtle"
 	"errors"
 	"fmt"
@@ -25,7 +24,7 @@ type KeyPair struct {
 // GenerateKeyPair creates a new Curve25519 key pair using crypto/rand.
 func GenerateKeyPair() (*KeyPair, error) {
 	var priv [32]byte
-	if _, err := io.ReadFull(rand.Reader, priv[:]); err != nil {
+	if _, err := io.ReadFull(randReader, priv[:]); err != nil {
 		return nil, fmt.Errorf("generate private key: %w", err)
 	}
 	pub, err := scalarBaseMult(priv)

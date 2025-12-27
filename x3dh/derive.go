@@ -23,13 +23,14 @@ func deriveLegacySecret(ikm []byte) ([32]byte, error) {
 	return shared, nil
 }
 
-func derivePQSecret(ikm []byte) (root [32]byte, chain [32]byte, err error) {
+func derivePQSecret(ikm []byte) (root [32]byte, chain [32]byte, pqr [32]byte, err error) {
 	secretBytes, err := signalcrypto.HKDF(ikm, nil, pqInfoString, 96)
 	if err != nil {
-		return root, chain, err
+		return root, chain, pqr, err
 	}
 	copy(root[:], secretBytes[:32])
 	copy(chain[:], secretBytes[32:64])
+	copy(pqr[:], secretBytes[64:96])
 	signalcrypto.ZeroBytes(secretBytes)
-	return root, chain, nil
+	return root, chain, pqr, nil
 }

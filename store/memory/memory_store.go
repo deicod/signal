@@ -29,7 +29,9 @@ type Store struct {
 }
 
 const (
+	// DefaultSignedPreKeyMaxAge is the default expiry window for signed pre-keys.
 	DefaultSignedPreKeyMaxAge = 30 * 24 * time.Hour
+	// DefaultMaxSessionsPerName bounds stored sessions per name.
 	DefaultMaxSessionsPerName = 100
 )
 

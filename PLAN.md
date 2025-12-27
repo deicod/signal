@@ -45,7 +45,7 @@ Reference target (to lock): https://github.com/signalapp/libsignal commit `cfaf2
 - [x] Implement MAC creation/verification and any required truncation rules.
 - [x] Ensure replay protection rules match spec (duplicate counters, overflow handling).
 - [x] Add ratchet message vectors and integration tests for ordering/loss/duplication.
-- [ ] Implement SPQR (post-quantum ratchet) state and pq_ratchet key mixing for Kyber sessions.
+- [x] Implement SPQR (post-quantum ratchet) state and pq_ratchet key mixing for Kyber sessions.
 
 ## 5. Session and Cipher Wire Integration
 - [x] Add wire message parsing/serialization alongside the existing internal envelope.
@@ -101,7 +101,7 @@ Reference target (to lock): https://github.com/signalapp/libsignal commit `cfaf2
 - [x] Add deterministic X3DH/ratchet vector files for the current implementation.
 - [x] Implement a vector runner to validate serialization and cryptographic outputs.
 - [x] Add cross-implementation fixtures (generated from libsignal) where possible.
-- [ ] Validate libsignal session fixture decryption once SPQR support is in place.
+- [x] Validate libsignal session fixture decryption once SPQR support is in place.
 - [x] Add fuzzing for wire deserialization and message processing.
 
 ## 10. Docs and Migration

@@ -54,6 +54,7 @@ func ParsePreKeyMessage(data []byte) (*PreKeyMessage, error) {
 	return &PreKeyMessage{inner: msg}, nil
 }
 
+// DeserializePreKeyMessage deserializes a PreKeyMessage from wire bytes.
 // Deprecated: use ParsePreKeyMessage instead.
 func DeserializePreKeyMessage(data []byte) (*PreKeyMessage, error) {
 	return ParsePreKeyMessage(data)
