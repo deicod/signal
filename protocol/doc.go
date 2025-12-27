@@ -1,3 +1,2 @@
-// Package protocol defines Signal wire protocol message structures and
-// serialization helpers.
+// Package protocol defines wire-compatible Signal message helpers.
 package protocol

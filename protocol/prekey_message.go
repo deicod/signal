@@ -1,121 +1,156 @@
 package protocol
 
 import (
-	"encoding/binary"
 	"fmt"
 
+	signalerrors "github.com/deicod/signal/errors"
 	"github.com/deicod/signal/keys"
+	wire "github.com/deicod/signal/protocol/wire"
 )
 
 // PreKeyMessage wraps the initial Signal message along with identity and pre-key metadata.
 type PreKeyMessage struct {
-	Version        uint8
-	RegistrationID uint32
-	PreKeyID       *uint32
-	SignedPreKeyID uint32
-	BaseKey        [32]byte
-	IdentityKey    keys.IdentityKey
-	SignalMessage  *SignalMessage
+	inner *wire.PreKeySignalMessage
+}
+
+// NewPreKeyMessage constructs and serializes a PreKeyMessage.
+func NewPreKeyMessage(
+	messageVersion uint8,
+	registrationID uint32,
+	preKeyID *uint32,
+	signedPreKeyID uint32,
+	kyberPreKeyID *uint32,
+	kyberCiphertext []byte,
+	baseKey [32]byte,
+	identityKey keys.IdentityKey,
+	message *SignalMessage,
+) (*PreKeyMessage, error) {
+	if message == nil || message.inner == nil {
+		return nil, fmt.Errorf("%w: missing inner signal message", signalerrors.ErrInvalidMessage)
+	}
+	msg, err := wire.NewPreKeySignalMessage(
+		messageVersion,
+		registrationID,
+		preKeyID,
+		signedPreKeyID,
+		kyberPreKeyID,
+		kyberCiphertext,
+		baseKey,
+		identityKey,
+		message.inner,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &PreKeyMessage{inner: msg}, nil
+}
+
+// ParsePreKeyMessage deserializes a PreKeyMessage from wire bytes.
+func ParsePreKeyMessage(data []byte) (*PreKeyMessage, error) {
+	msg, err := wire.ParsePreKeySignalMessage(data)
+	if err != nil {
+		return nil, err
+	}
+	return &PreKeyMessage{inner: msg}, nil
+}
+
+// Deprecated: use ParsePreKeyMessage instead.
+func DeserializePreKeyMessage(data []byte) (*PreKeyMessage, error) {
+	return ParsePreKeyMessage(data)
 }
 
 // Type identifies the message type.
 func (p *PreKeyMessage) Type() CiphertextType { return PreKeyType }
 
-// Serialize encodes the PreKeyMessage into bytes.
+// Serialize returns the wire encoding.
 func (p *PreKeyMessage) Serialize() []byte {
-	hasPreKey := byte(0)
-	if p.PreKeyID != nil {
-		hasPreKey = 1
+	if p == nil || p.inner == nil {
+		return nil
 	}
-	identityBytes, _ := p.IdentityKey.Serialize()
-	signalBytes := p.SignalMessage.Serialize()
-
-	out := make([]byte, 1+4+1+4+4+32+2+len(identityBytes)+4+len(signalBytes))
-	pos := 0
-	out[pos] = p.Version
-	pos++
-	binary.BigEndian.PutUint32(out[pos:pos+4], p.RegistrationID)
-	pos += 4
-	out[pos] = hasPreKey
-	pos++
-	if hasPreKey == 1 {
-		binary.BigEndian.PutUint32(out[pos:pos+4], *p.PreKeyID)
-		pos += 4
-	} else {
-		pos += 4
-	}
-	binary.BigEndian.PutUint32(out[pos:pos+4], p.SignedPreKeyID)
-	pos += 4
-	copy(out[pos:pos+32], p.BaseKey[:])
-	pos += 32
-	binary.BigEndian.PutUint16(out[pos:pos+2], uint16(len(identityBytes)))
-	pos += 2
-	copy(out[pos:pos+len(identityBytes)], identityBytes)
-	pos += len(identityBytes)
-	binary.BigEndian.PutUint32(out[pos:pos+4], uint32(len(signalBytes)))
-	pos += 4
-	copy(out[pos:], signalBytes)
-	return out
+	return p.inner.Serialize()
 }
 
-// DeserializePreKeyMessage decodes a PreKeyMessage from bytes.
-func DeserializePreKeyMessage(data []byte) (*PreKeyMessage, error) {
-	if len(data) < 1+4+1+4+4+32+2+4 {
-		return nil, fmt.Errorf("pre-key message: too short")
+// MessageVersion returns the high-nibble message version.
+func (p *PreKeyMessage) MessageVersion() uint8 {
+	if p == nil || p.inner == nil {
+		return 0
 	}
-	pos := 0
-	msg := &PreKeyMessage{}
-	msg.Version = data[pos]
-	pos++
-	msg.RegistrationID = binary.BigEndian.Uint32(data[pos : pos+4])
-	pos += 4
-	hasPreKey := data[pos]
-	pos++
-	if hasPreKey == 1 {
-		id := binary.BigEndian.Uint32(data[pos : pos+4])
-		msg.PreKeyID = &id
-	}
-	pos += 4
-	msg.SignedPreKeyID = binary.BigEndian.Uint32(data[pos : pos+4])
-	pos += 4
-	copy(msg.BaseKey[:], data[pos:pos+32])
-	pos += 32
+	return p.inner.MessageVersion()
+}
 
-	if pos+2 > len(data) {
-		return nil, fmt.Errorf("pre-key message: truncated identity length")
+// RegistrationID returns the sender registration ID.
+func (p *PreKeyMessage) RegistrationID() uint32 {
+	if p == nil || p.inner == nil {
+		return 0
 	}
-	identityLen := int(binary.BigEndian.Uint16(data[pos : pos+2]))
-	pos += 2
-	if pos+identityLen+4 > len(data) {
-		return nil, fmt.Errorf("pre-key message: truncated identity")
-	}
-	identity, err := keys.DeserializeIdentityKey(data[pos : pos+identityLen])
-	if err != nil {
-		return nil, fmt.Errorf("pre-key message: %w", err)
-	}
-	msg.IdentityKey = *identity
-	pos += identityLen
+	return p.inner.RegistrationID()
+}
 
-	if pos+4 > len(data) {
-		return nil, fmt.Errorf("pre-key message: truncated signal length")
+// PreKeyID returns the optional pre-key ID.
+func (p *PreKeyMessage) PreKeyID() *uint32 {
+	if p == nil || p.inner == nil {
+		return nil
 	}
-	signalLen := int(binary.BigEndian.Uint32(data[pos : pos+4]))
-	pos += 4
-	if pos+signalLen > len(data) {
-		return nil, fmt.Errorf("pre-key message: truncated signal message")
+	return p.inner.PreKeyID()
+}
+
+// SignedPreKeyID returns the signed pre-key ID.
+func (p *PreKeyMessage) SignedPreKeyID() uint32 {
+	if p == nil || p.inner == nil {
+		return 0
 	}
-	signalMsg, err := DeserializeSignalMessage(data[pos : pos+signalLen])
-	if err != nil {
-		return nil, fmt.Errorf("pre-key message: %w", err)
+	return p.inner.SignedPreKeyID()
+}
+
+// KyberPreKeyID returns the optional Kyber pre-key ID.
+func (p *PreKeyMessage) KyberPreKeyID() *uint32 {
+	if p == nil || p.inner == nil {
+		return nil
 	}
-	msg.SignalMessage = signalMsg
-	return msg, nil
+	return p.inner.KyberPreKeyID()
+}
+
+// KyberCiphertext returns the Kyber ciphertext payload.
+func (p *PreKeyMessage) KyberCiphertext() []byte {
+	if p == nil || p.inner == nil {
+		return nil
+	}
+	return p.inner.KyberCiphertext()
+}
+
+// BaseKey returns the initiator base key.
+func (p *PreKeyMessage) BaseKey() [32]byte {
+	if p == nil || p.inner == nil {
+		return [32]byte{}
+	}
+	return p.inner.BaseKey()
+}
+
+// IdentityKey returns the initiator identity key.
+func (p *PreKeyMessage) IdentityKey() keys.IdentityKey {
+	if p == nil || p.inner == nil {
+		return keys.IdentityKey{}
+	}
+	return p.inner.IdentityKey()
+}
+
+// SignalMessage returns the embedded SignalMessage.
+func (p *PreKeyMessage) SignalMessage() *SignalMessage {
+	if p == nil || p.inner == nil {
+		return nil
+	}
+	message := p.inner.Message()
+	if message == nil {
+		return nil
+	}
+	return &SignalMessage{inner: message}
 }
 
 // VerifyMAC delegates to the nested signal message MAC verification.
-func (p *PreKeyMessage) VerifyMAC(macKey []byte) bool {
-	if p == nil || p.SignalMessage == nil {
-		return false
+func (p *PreKeyMessage) VerifyMAC(senderIdentity keys.IdentityKey, receiverIdentity keys.IdentityKey, macKey []byte) (bool, error) {
+	msg := p.SignalMessage()
+	if msg == nil {
+		return false, fmt.Errorf("%w: missing signal message", signalerrors.ErrInvalidMessage)
 	}
-	return p.SignalMessage.VerifyMAC(macKey)
+	return msg.VerifyMAC(senderIdentity, receiverIdentity, macKey)
 }

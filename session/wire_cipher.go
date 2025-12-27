@@ -13,8 +13,6 @@ import (
 	"github.com/deicod/signal/x3dh"
 )
 
-const wireMessageVersion uint8 = 4
-
 // WireCipher offers high-level encryption/decryption targeting libsignal wire formats.
 type WireCipher struct {
 	store         store.ProtocolStore
@@ -103,7 +101,7 @@ func (c *WireCipher) EncryptWithPreKeyBundle(bundle *keys.PreKeyBundle, plaintex
 	}
 
 	preKeyMsg, err := wire.NewPreKeySignalMessage(
-		wireMessageVersion,
+		ciphertextVersionForSession(session),
 		registrationID,
 		x3msg.PreKeyID,
 		x3msg.SignedPreKeyID,
@@ -149,8 +147,9 @@ func (c *WireCipher) encryptSignalMessage(session *Session, plaintext []byte) (*
 		return nil, fmt.Errorf("%w: missing identity keys", signalerrors.ErrInvalidKey)
 	}
 
+	messageVersion := ciphertextVersionForSession(session)
 	return wire.NewSignalMessage(
-		wireMessageVersion,
+		messageVersion,
 		macKey,
 		header.DH,
 		header.N,
@@ -213,6 +212,12 @@ func decryptSignalWithSession(session *Session, msg *wire.SignalMessage) ([]byte
 		return nil, fmt.Errorf("%w: missing identity keys", signalerrors.ErrInvalidKey)
 	}
 
+	msgVersion := msg.MessageVersion()
+	sessionVersion, hasSessionVersion := normalizeCiphertextVersion(session.version)
+	if hasSessionVersion && msgVersion != sessionVersion {
+		return nil, fmt.Errorf("%w: message version %d does not match session", signalerrors.ErrInvalidMessage, msgVersion)
+	}
+
 	state := session.CurrentState()
 	if state == nil {
 		return nil, fmt.Errorf("%w: missing ratchet state", signalerrors.ErrNoSession)
@@ -244,6 +249,9 @@ func decryptSignalWithSession(session *Session, msg *wire.SignalMessage) ([]byte
 		return nil, errors.Join(signalerrors.ErrInvalidMAC, fmt.Errorf("decrypt: %w", err))
 	}
 
+	if !hasSessionVersion {
+		setSessionCiphertextVersion(session, msgVersion)
+	}
 	*state = *next
 	return plaintext, nil
 }
@@ -269,13 +277,13 @@ func (c *WireCipher) decryptPreKeyMessage(record *Record, msg *wire.PreKeySignal
 	}
 
 	x3msg := &x3dh.Message{
-		IdentityKey:    msg.IdentityKey(),
-		EphemeralKey:   msg.BaseKey(),
-		PreKeyID:       msg.PreKeyID(),
-		SignedPreKeyID: msg.SignedPreKeyID(),
-		KyberPreKeyID:  msg.KyberPreKeyID(),
+		IdentityKey:     msg.IdentityKey(),
+		EphemeralKey:    msg.BaseKey(),
+		PreKeyID:        msg.PreKeyID(),
+		SignedPreKeyID:  msg.SignedPreKeyID(),
+		KyberPreKeyID:   msg.KyberPreKeyID(),
 		KyberCiphertext: msg.KyberCiphertext(),
-		Ciphertext:     msg.Message().Serialize(),
+		Ciphertext:      msg.Message().Serialize(),
 	}
 
 	session, _, err := c.builder.ProcessPreKeyMessage(x3msg)
@@ -342,5 +350,11 @@ func (c *WireCipher) persistRecord(record *Record) error {
 	if err != nil {
 		return fmt.Errorf("%w: serialize session record: %v", signalerrors.ErrInvalidMessage, err)
 	}
-	return c.store.StoreSession(c.remoteAddress, &store.SessionRecord{Data: data})
+	if err := c.store.StoreSession(c.remoteAddress, &store.SessionRecord{Data: data}); err != nil {
+		return err
+	}
+	if err := c.store.EnforceSessionLimit(c.remoteAddress); err != nil {
+		return fmt.Errorf("enforce session limit: %w", err)
+	}
+	return nil
 }

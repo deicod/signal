@@ -19,7 +19,7 @@ type SignalMessage struct {
 	previousCounter uint32
 	ciphertext      []byte
 	pqRatchet       []byte
-	serialized       []byte
+	serialized      []byte
 }
 
 // NewSignalMessage constructs and serializes a SignalMessage, appending the MAC.
@@ -34,12 +34,12 @@ func NewSignalMessage(
 	receiverIdentity keys.IdentityKey,
 	pqRatchet []byte,
 ) (*SignalMessage, error) {
-	if messageVersion < ciphertextMessagePreKyberVersion || messageVersion > ciphertextMessageCurrentVersion {
+	if messageVersion < CiphertextMessagePreKyberVersion || messageVersion > CiphertextMessageCurrentVersion {
 		return nil, fmt.Errorf("%w: unsupported message version %d", signalerrors.ErrInvalidMessage, messageVersion)
 	}
 	body := encodeSignalMessageBody(senderRatchet, counter, previousCounter, ciphertext, pqRatchet)
-	serialized := make([]byte, 0, 1+len(body)+signalMessageMACLength)
-	serialized = append(serialized, versionByte(messageVersion, ciphertextMessageCurrentVersion))
+	serialized := make([]byte, 0, 1+len(body)+SignalMessageMACLength)
+	serialized = append(serialized, versionByte(messageVersion, CiphertextMessageCurrentVersion))
 	serialized = append(serialized, body...)
 
 	mac, err := computeSignalMAC(macKey, senderIdentity, receiverIdentity, serialized)
@@ -61,18 +61,18 @@ func NewSignalMessage(
 
 // ParseSignalMessage deserializes a SignalMessage from wire bytes.
 func ParseSignalMessage(data []byte) (*SignalMessage, error) {
-	if len(data) < 1+signalMessageMACLength {
+	if len(data) < 1+SignalMessageMACLength {
 		return nil, fmt.Errorf("%w: signal message too short", signalerrors.ErrInvalidMessage)
 	}
 	messageVersion := parseMessageVersion(data[0])
-	if messageVersion < ciphertextMessagePreKyberVersion {
+	if messageVersion < CiphertextMessagePreKyberVersion {
 		return nil, fmt.Errorf("%w: legacy signal message version %d", signalerrors.ErrInvalidMessage, messageVersion)
 	}
-	if messageVersion > ciphertextMessageCurrentVersion {
+	if messageVersion > CiphertextMessageCurrentVersion {
 		return nil, fmt.Errorf("%w: unsupported signal message version %d", signalerrors.ErrInvalidMessage, messageVersion)
 	}
 
-	body := data[1 : len(data)-signalMessageMACLength]
+	body := data[1 : len(data)-SignalMessageMACLength]
 	senderRatchet, counter, previousCounter, ciphertext, pqRatchet, err := decodeSignalMessageBody(body)
 	if err != nil {
 		return nil, err
@@ -150,14 +150,14 @@ func (m *SignalMessage) VerifyMAC(senderIdentity keys.IdentityKey, receiverIdent
 	if m == nil {
 		return false, fmt.Errorf("%w: signal message is nil", signalerrors.ErrInvalidMessage)
 	}
-	if len(m.serialized) < signalMessageMACLength {
+	if len(m.serialized) < SignalMessageMACLength {
 		return false, fmt.Errorf("%w: signal message too short", signalerrors.ErrInvalidMessage)
 	}
-	mac, err := computeSignalMAC(macKey, senderIdentity, receiverIdentity, m.serialized[:len(m.serialized)-signalMessageMACLength])
+	mac, err := computeSignalMAC(macKey, senderIdentity, receiverIdentity, m.serialized[:len(m.serialized)-SignalMessageMACLength])
 	if err != nil {
 		return false, err
 	}
-	remoteMac := m.serialized[len(m.serialized)-signalMessageMACLength:]
+	remoteMac := m.serialized[len(m.serialized)-SignalMessageMACLength:]
 	return hmac.Equal(remoteMac, mac), nil
 }
 
@@ -170,7 +170,7 @@ func computeSignalMAC(macKey []byte, senderIdentity keys.IdentityKey, receiverId
 	mac.Write(keys.SerializeWirePublicKey(receiverIdentity.PublicKey))
 	mac.Write(message)
 	sum := mac.Sum(nil)
-	return append([]byte(nil), sum[:signalMessageMACLength]...), nil
+	return append([]byte(nil), sum[:SignalMessageMACLength]...), nil
 }
 
 func encodeSignalMessageBody(senderRatchet [32]byte, counter uint32, previousCounter uint32, ciphertext []byte, pqRatchet []byte) []byte {

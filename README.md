@@ -5,6 +5,20 @@ An implementation of the Signal Protocol in Go, structured as a reusable library
 ## Compatibility
 Wire compatibility is targeting Signal's Rust implementation (`libsignal`) at commit [`cfaf27f3a2d743e776ef553a770295d7e751277d`](https://github.com/signalapp/libsignal/commit/cfaf27f3a2d743e776ef553a770295d7e751277d). Work is in progress; the current internal envelope format will remain available as a legacy API via `signal.EnvelopeCipher` (see `PLAN.md`).
 
+## Migration (Wire vs Legacy)
+`signal.Cipher` produces libsignal wire ciphertexts. The legacy internal envelope remains available via `signal.EnvelopeCipher` (or `session.Cipher` with its `EncryptEnvelope`/`DecryptEnvelope` aliases). For mixed deployments, detect and route ciphertexts:
+
+```go
+switch signal.DetectCiphertextFormat(ct) {
+case signal.CiphertextWire:
+	plaintext, err = wireCipher.Decrypt(ct)
+case signal.CiphertextEnvelope:
+	plaintext, err = envelopeCipher.Decrypt(ct)
+default:
+	// unknown format
+}
+```
+
 ## Project Layout
 - `crypto/` low-level primitives (Curve25519, AEAD, HKDF, HMAC, random)
 - `keys/` identity, pre-key, signed pre-key, ephemeral key types

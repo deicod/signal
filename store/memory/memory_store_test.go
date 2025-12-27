@@ -2,6 +2,7 @@ package memory
 
 import (
 	"testing"
+	"time"
 
 	"github.com/deicod/signal/keys"
 	"github.com/deicod/signal/store"
@@ -59,6 +60,20 @@ func TestMemoryStoreSignedPreKeys(t *testing.T) {
 	require.False(t, ms.ContainsSignedPreKey(spk.ID))
 }
 
+func TestMemoryStoreSignedPreKeyExpiry(t *testing.T) {
+	id, _ := keys.GenerateIdentityKeyPair()
+	ms := NewStore(id, 1)
+	ms.SetSignedPreKeyMaxAge(time.Hour)
+
+	spk, _ := keys.GenerateSignedPreKey(id, 7)
+	spk.Timestamp = time.Now().Add(-2 * time.Hour)
+
+	require.True(t, ms.SignedPreKeyExpired(spk, time.Now()))
+
+	spk.Timestamp = time.Now().Add(-30 * time.Minute)
+	require.False(t, ms.SignedPreKeyExpired(spk, time.Now()))
+}
+
 func TestMemoryStoreKyberPreKeys(t *testing.T) {
 	id, _ := keys.GenerateIdentityKeyPair()
 	ms := NewStore(id, 1)
@@ -104,6 +119,23 @@ func TestMemoryStoreSessions(t *testing.T) {
 	require.NoError(t, ms.DeleteAllSessions("alice"))
 	require.False(t, ms.ContainsSession(addr1))
 	require.False(t, ms.ContainsSession(addr2))
+}
+
+func TestMemoryStoreEnforceSessionLimit(t *testing.T) {
+	id, _ := keys.GenerateIdentityKeyPair()
+	ms := NewStore(id, 1)
+	ms.SetMaxSessionsPerName(1)
+
+	addr1 := store.Address{Name: "alice", Device: 1}
+	addr2 := store.Address{Name: "alice", Device: 2}
+	rec := &store.SessionRecord{Data: []byte("session")}
+
+	require.NoError(t, ms.StoreSession(addr1, rec))
+	require.NoError(t, ms.StoreSession(addr2, rec))
+	require.NoError(t, ms.EnforceSessionLimit(addr2))
+
+	require.False(t, ms.ContainsSession(addr1))
+	require.True(t, ms.ContainsSession(addr2))
 }
 
 func TestMemoryStoreSenderKeys(t *testing.T) {

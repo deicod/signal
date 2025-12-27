@@ -2,6 +2,7 @@ package session
 
 import (
 	"testing"
+	"time"
 
 	signalerrors "github.com/deicod/signal/errors"
 	"github.com/deicod/signal/keys"
@@ -92,6 +93,40 @@ func TestProcessPreKeyMessageCreatesSession(t *testing.T) {
 	saved, _ := storeBob.GetIdentity(store.Address{Name: "alice", Device: 1})
 	require.NotNil(t, saved)
 	require.Equal(t, aliceID.PublicKey, *saved)
+}
+
+func TestProcessPreKeyMessageRejectsExpiredSignedPreKey(t *testing.T) {
+	aliceID, _ := keys.GenerateIdentityKeyPair()
+	bobID, _ := keys.GenerateIdentityKeyPair()
+	signed, _ := keys.GenerateSignedPreKey(bobID, 5)
+	signed.Timestamp = time.Now().Add(-48 * time.Hour)
+	pre, _ := keys.GeneratePreKey(7)
+	kyber, _ := keys.GenerateKyberPreKey(bobID, 9)
+
+	bundle, err := keys.NewPreKeyBundleWithKyber(1, 1, pre, signed, kyber, bobID.PublicKey)
+	require.NoError(t, err)
+
+	// Alice builds initial message.
+	storeAlice := memory.NewStore(aliceID, 1)
+	addrBob := store.Address{Name: "bob", Device: 1}
+	initBuilder := NewBuilder(storeAlice, addrBob)
+	_, initMsg, err := initBuilder.ProcessPreKeyBundle(bundle)
+	require.NoError(t, err)
+
+	// Bob processes incoming message with an expired signed pre-key.
+	storeBob := memory.NewStore(bobID, 2)
+	storeBob.SetSignedPreKeyMaxAge(24 * time.Hour)
+	require.NoError(t, storeBob.StoreSignedPreKey(signed.ID, signed))
+	require.NoError(t, storeBob.StoreKyberPreKey(kyber.ID, kyber))
+	if pre != nil {
+		require.NoError(t, storeBob.StorePreKey(pre.ID, pre))
+	}
+
+	respBuilder := NewBuilder(storeBob, store.Address{Name: "alice", Device: 1})
+	session, ad, err := respBuilder.ProcessPreKeyMessage(initMsg)
+	require.ErrorIs(t, err, signalerrors.ErrPreKeyExpired)
+	require.Nil(t, session)
+	require.Nil(t, ad)
 }
 
 func TestProcessPreKeyMessageRejectsUntrusted(t *testing.T) {

@@ -1,6 +1,10 @@
 package store
 
-import "github.com/deicod/signal/keys"
+import (
+	"time"
+
+	"github.com/deicod/signal/keys"
+)
 
 // IdentityKeyStore stores local identity keys and trusted remote identities.
 type IdentityKeyStore interface {
@@ -25,6 +29,8 @@ type SignedPreKeyStore interface {
 	StoreSignedPreKey(id uint32, signedPreKey *keys.SignedPreKey) error
 	ContainsSignedPreKey(id uint32) bool
 	RemoveSignedPreKey(id uint32) error
+	// SignedPreKeyExpired reports whether the signed pre-key is expired at the provided time.
+	SignedPreKeyExpired(signedPreKey *keys.SignedPreKey, now time.Time) bool
 }
 
 // KyberPreKeyStore stores Kyber pre-keys.
@@ -49,6 +55,8 @@ type SessionStore interface {
 	ContainsSession(address Address) bool
 	DeleteSession(address Address) error
 	DeleteAllSessions(name string) error
+	// EnforceSessionLimit trims stored sessions for the address' name per store policy.
+	EnforceSessionLimit(address Address) error
 }
 
 // SenderKeyName identifies a Sender Key state for a (group + sender) tuple.

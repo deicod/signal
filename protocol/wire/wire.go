@@ -1,11 +1,11 @@
 package wire
 
 const (
-	ciphertextMessageCurrentVersion  uint8 = 4
-	ciphertextMessagePreKyberVersion uint8 = 3
-	senderKeyMessageCurrentVersion   uint8 = 3
+	CiphertextMessageCurrentVersion  uint8 = 4
+	CiphertextMessagePreKyberVersion uint8 = 3
+	SenderKeyMessageCurrentVersion   uint8 = 3
 
-	signalMessageMACLength = 8
+	SignalMessageMACLength = 8
 )
 
 func versionByte(messageVersion, currentVersion uint8) byte {

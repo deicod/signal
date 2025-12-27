@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/subtle"
 	"sync"
+	"time"
 
 	"github.com/deicod/signal/keys"
 	"github.com/deicod/signal/store"
@@ -15,6 +16,8 @@ type Store struct {
 
 	identityKeyPair     *keys.IdentityKeyPair
 	localRegistrationID uint32
+	signedPreKeyMaxAge  time.Duration
+	maxSessionsPerName  int
 
 	identities map[store.Address]*keys.IdentityKey
 	preKeys    map[uint32]*keys.PreKey
@@ -25,11 +28,18 @@ type Store struct {
 	sesame     *store.SesameRecord
 }
 
+const (
+	DefaultSignedPreKeyMaxAge = 30 * 24 * time.Hour
+	DefaultMaxSessionsPerName = 100
+)
+
 // NewStore initializes an empty in-memory store.
 func NewStore(identity *keys.IdentityKeyPair, registrationID uint32) *Store {
 	return &Store{
 		identityKeyPair:     identity,
 		localRegistrationID: registrationID,
+		signedPreKeyMaxAge:  DefaultSignedPreKeyMaxAge,
+		maxSessionsPerName:  DefaultMaxSessionsPerName,
 		identities:          make(map[store.Address]*keys.IdentityKey),
 		preKeys:             make(map[uint32]*keys.PreKey),
 		signedKeys:          make(map[uint32]*keys.SignedPreKey),
@@ -38,6 +48,22 @@ func NewStore(identity *keys.IdentityKeyPair, registrationID uint32) *Store {
 		senderKeys:          make(map[store.SenderKeyName]*store.SenderKeyRecord),
 		sesame:              nil,
 	}
+}
+
+// SetSignedPreKeyMaxAge configures the signed pre-key expiration window.
+// Use a non-positive duration to disable expiry checks.
+func (m *Store) SetSignedPreKeyMaxAge(maxAge time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.signedPreKeyMaxAge = maxAge
+}
+
+// SetMaxSessionsPerName configures the session limit per name.
+// Use a non-positive limit to disable enforcement.
+func (m *Store) SetMaxSessionsPerName(maxSessions int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.maxSessionsPerName = maxSessions
 }
 
 // GetIdentityKeyPair returns the local identity key pair.
@@ -177,6 +203,27 @@ func (m *Store) ContainsSignedPreKey(id uint32) bool {
 	return ok
 }
 
+// SignedPreKeyExpired reports whether a signed pre-key is expired according to store policy.
+func (m *Store) SignedPreKeyExpired(signedPreKey *keys.SignedPreKey, now time.Time) bool {
+	if signedPreKey == nil {
+		return true
+	}
+	m.mu.RLock()
+	maxAge := m.signedPreKeyMaxAge
+	m.mu.RUnlock()
+	if maxAge <= 0 {
+		return false
+	}
+	if signedPreKey.Timestamp.IsZero() {
+		return true
+	}
+	age := now.Sub(signedPreKey.Timestamp)
+	if age < 0 {
+		return false
+	}
+	return age > maxAge
+}
+
 // RemoveSignedPreKey deletes a signed pre-key by ID.
 func (m *Store) RemoveSignedPreKey(id uint32) error {
 	m.mu.Lock()
@@ -271,6 +318,40 @@ func (m *Store) DeleteAllSessions(name string) error {
 	for addr := range m.sessions {
 		if addr.Name == name {
 			delete(m.sessions, addr)
+		}
+	}
+	return nil
+}
+
+// EnforceSessionLimit trims sessions for a name according to store policy.
+func (m *Store) EnforceSessionLimit(address store.Address) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.maxSessionsPerName <= 0 {
+		return nil
+	}
+	if address.Name == "" {
+		return nil
+	}
+	count := 0
+	for addr := range m.sessions {
+		if addr.Name == address.Name {
+			count++
+		}
+	}
+	for count > m.maxSessionsPerName {
+		removed := false
+		for addr := range m.sessions {
+			if addr.Name != address.Name || (addr == address) {
+				continue
+			}
+			delete(m.sessions, addr)
+			count--
+			removed = true
+			break
+		}
+		if !removed {
+			break
 		}
 	}
 	return nil

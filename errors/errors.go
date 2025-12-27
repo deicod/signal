@@ -26,6 +26,8 @@ var (
 
 	// ErrPreKeyNotFound indicates a required pre-key (or signed pre-key) was not available.
 	ErrPreKeyNotFound = errors.New("signal: pre-key not found")
+	// ErrPreKeyExpired indicates a pre-key or signed pre-key is expired.
+	ErrPreKeyExpired = errors.New("signal: pre-key expired")
 	// ErrMaxSkipExceeded indicates the skipped-message-key limit was exceeded.
 	ErrMaxSkipExceeded = errors.New("signal: max skip exceeded")
 	// ErrStaleKeyExchange indicates an unexpected pre-key bootstrap for an existing session.

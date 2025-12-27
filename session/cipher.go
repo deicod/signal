@@ -50,6 +50,11 @@ func (c *Cipher) Encrypt(plaintext []byte) ([]byte, error) {
 	return encodeEnvelope(envelopeTypeSignal, payload), nil
 }
 
+// EncryptEnvelope is an explicit alias for Encrypt to highlight legacy envelope usage.
+func (c *Cipher) EncryptEnvelope(plaintext []byte) ([]byte, error) {
+	return c.Encrypt(plaintext)
+}
+
 // Decrypt decrypts a ciphertext envelope using either an existing session
 // or (in the future) a pre-key bootstrap message.
 func (c *Cipher) Decrypt(data []byte) ([]byte, error) {
@@ -82,6 +87,11 @@ func (c *Cipher) Decrypt(data []byte) ([]byte, error) {
 	default:
 		return nil, fmt.Errorf("%w: unknown message type %d", signalerrors.ErrInvalidMessage, msgType)
 	}
+}
+
+// DecryptEnvelope is an explicit alias for Decrypt to highlight legacy envelope usage.
+func (c *Cipher) DecryptEnvelope(data []byte) ([]byte, error) {
+	return c.Decrypt(data)
 }
 
 const (
@@ -128,7 +138,13 @@ func (c *Cipher) persistRecord(record *Record) error {
 	if err != nil {
 		return fmt.Errorf("%w: serialize session record: %v", signalerrors.ErrInvalidMessage, err)
 	}
-	return c.store.StoreSession(c.remoteAddress, &store.SessionRecord{Data: data})
+	if err := c.store.StoreSession(c.remoteAddress, &store.SessionRecord{Data: data}); err != nil {
+		return err
+	}
+	if err := c.store.EnforceSessionLimit(c.remoteAddress); err != nil {
+		return fmt.Errorf("enforce session limit: %w", err)
+	}
+	return nil
 }
 
 func encodeEnvelope(msgType byte, payload []byte) []byte {

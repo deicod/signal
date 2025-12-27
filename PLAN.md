@@ -17,14 +17,14 @@ Reference target (to lock): https://github.com/signalapp/libsignal commit `cfaf2
 - [x] Enumerate any required optional features (sealed sender, multi-device/Sesame, group messaging).
   - [x] Multi-device/Sesame (in scope; API present, see `sesame/`)
   - [x] Group messaging via Sender Keys (in scope; wire encoding pending, see Section 6)
-  - [ ] Sealed sender (scope decision pending; see Section 7)
+  - [x] Sealed sender (scope decision pending; see Section 7)
 
 ## 1. Wire Message Formats and Serialization
 - [x] Add protobuf schemas for Signal message types (1:1 and group) under `proto/`.
 - [ ] Generate Go protobuf code and add `google.golang.org/protobuf` to `go.mod`.
-- [ ] Implement message version/type encoding exactly per Signal spec (bit layout, message versioning).
-- [ ] Replace `protocol/*.go` custom binary serialization with protobuf-based wire encoding.
-- [ ] Define a stable wire codec API (e.g., `protocol/wire`) used by session and sender keys.
+- [x] Implement message version/type encoding exactly per Signal spec (bit layout, message versioning).
+- [x] Replace `protocol/*.go` custom binary serialization with protobuf-based wire encoding.
+- [x] Define a stable wire codec API (e.g., `protocol/wire`) used by session and sender keys.
 
 ## 2. Identity Keys and Signatures (XEdDSA/VXEdDSA)
 - [x] Implement XEdDSA/VXEdDSA signing for Curve25519 keys (per Signal spec).
@@ -55,8 +55,8 @@ Reference target (to lock): https://github.com/signalapp/libsignal commit `cfaf2
 - [x] Keep `signal.Cipher` as the wire-compatible default (Signal/libsignal format).
 - [x] Add `signal.EnvelopeCipher` for the current internal envelope.
 - [x] Add `session.WireCipher` to drive wire encoding explicitly.
-- [ ] Keep `session.Cipher` envelope helpers as `EncryptEnvelope`/`DecryptEnvelope` if a single type is preferred.
-- [ ] Document the migration path and how to detect/route legacy vs wire ciphertext.
+- [x] Keep `session.Cipher` envelope helpers as `EncryptEnvelope`/`DecryptEnvelope` if a single type is preferred.
+- [x] Document the migration path and how to detect/route legacy vs wire ciphertext.
 
 ### Proposed API Shapes (to implement)
 - [x] `type signal.Cipher struct { inner *session.WireCipher }`
@@ -84,12 +84,13 @@ Reference target (to lock): https://github.com/signalapp/libsignal commit `cfaf2
 - [x] Add sender key distribution/message vectors and interoperability tests.
 
 ## 7. Sealed Sender (If Required)
-- [ ] Decide on sealed sender support and scope (certs, sender info, anonymous sender).
-- [ ] Implement sealed sender envelope and certificate handling if required.
-- [ ] Add tests for sealed sender encoding/decoding and session interaction.
+- [x] Decide on sealed sender support and scope (certs, sender info, anonymous sender).
+  - [x] Scope: v1 + v2 ReceivedMessage; no multi-recipient SentMessage builder.
+- [x] Implement sealed sender envelope and certificate handling if required.
+- [x] Add tests for sealed sender encoding/decoding and session interaction.
 
 ## 8. Storage and Security Hardening
-- [ ] Add store requirements for signed pre-key expiry and session limits.
+- [x] Add store requirements for signed pre-key expiry and session limits.
 - [x] Enforce public key validation everywhere inputs enter the protocol.
 - [ ] Expand key zeroization beyond X3DH (ratchet, sender keys, session teardown).
 - [ ] Review constant-time comparisons in all authentication paths.

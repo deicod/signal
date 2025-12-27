@@ -2,6 +2,7 @@ package session
 
 import (
 	"fmt"
+	"time"
 
 	signalerrors "github.com/deicod/signal/errors"
 	"github.com/deicod/signal/keys"
@@ -58,6 +59,7 @@ func (b *Builder) ProcessPreKeyBundle(bundle *keys.PreKeyBundle) (*Session, *x3d
 	if err != nil {
 		return nil, nil, err
 	}
+	setSessionCiphertextVersion(session, ciphertextVersionFromX3DH(&result.InitialMessage))
 
 	if err := b.store.SaveIdentity(b.remoteAddress, &bundle.IdentityKey); err != nil {
 		return nil, nil, fmt.Errorf("save identity: %w", err)
@@ -91,6 +93,9 @@ func (b *Builder) ProcessPreKeyMessage(msg *x3dh.Message) (*Session, []byte, err
 	if signedPreKey == nil {
 		return nil, nil, fmt.Errorf("%w: signed pre-key %d", signalerrors.ErrPreKeyNotFound, msg.SignedPreKeyID)
 	}
+	if b.store.SignedPreKeyExpired(signedPreKey, time.Now().UTC()) {
+		return nil, nil, fmt.Errorf("%w: signed pre-key %d", signalerrors.ErrPreKeyExpired, msg.SignedPreKeyID)
+	}
 
 	responder := x3dh.NewResponder(identityKey, signedPreKey, b.store, b.store)
 	result, err := responder.ProcessInitialMessage(msg)
@@ -107,6 +112,7 @@ func (b *Builder) ProcessPreKeyMessage(msg *x3dh.Message) (*Session, []byte, err
 	if err != nil {
 		return nil, nil, err
 	}
+	setSessionCiphertextVersion(session, ciphertextVersionFromX3DH(msg))
 
 	if err := b.store.SaveIdentity(b.remoteAddress, &msg.IdentityKey); err != nil {
 		return nil, nil, fmt.Errorf("save identity: %w", err)

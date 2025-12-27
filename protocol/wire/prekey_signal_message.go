@@ -38,10 +38,10 @@ func NewPreKeySignalMessage(
 	if message == nil {
 		return nil, fmt.Errorf("%w: missing inner signal message", signalerrors.ErrInvalidMessage)
 	}
-	if messageVersion < ciphertextMessagePreKyberVersion || messageVersion > ciphertextMessageCurrentVersion {
+	if messageVersion < CiphertextMessagePreKyberVersion || messageVersion > CiphertextMessageCurrentVersion {
 		return nil, fmt.Errorf("%w: unsupported pre-key version %d", signalerrors.ErrInvalidMessage, messageVersion)
 	}
-	if messageVersion > ciphertextMessagePreKyberVersion && (kyberPreKeyID == nil || len(kyberCiphertext) == 0) {
+	if messageVersion > CiphertextMessagePreKyberVersion && (kyberPreKeyID == nil || len(kyberCiphertext) == 0) {
 		return nil, fmt.Errorf("%w: kyber payload required for version %d", signalerrors.ErrInvalidMessage, messageVersion)
 	}
 	if (kyberPreKeyID == nil) != (len(kyberCiphertext) == 0) {
@@ -50,7 +50,7 @@ func NewPreKeySignalMessage(
 
 	body := encodePreKeySignalMessageBody(registrationID, preKeyID, signedPreKeyID, kyberPreKeyID, kyberCiphertext, baseKey, identityKey, message)
 	serialized := make([]byte, 0, 1+len(body))
-	serialized = append(serialized, versionByte(messageVersion, ciphertextMessageCurrentVersion))
+	serialized = append(serialized, versionByte(messageVersion, CiphertextMessageCurrentVersion))
 	serialized = append(serialized, body...)
 
 	return &PreKeySignalMessage{
@@ -73,10 +73,10 @@ func ParsePreKeySignalMessage(data []byte) (*PreKeySignalMessage, error) {
 		return nil, fmt.Errorf("%w: pre-key message too short", signalerrors.ErrInvalidMessage)
 	}
 	messageVersion := parseMessageVersion(data[0])
-	if messageVersion < ciphertextMessagePreKyberVersion {
+	if messageVersion < CiphertextMessagePreKyberVersion {
 		return nil, fmt.Errorf("%w: legacy pre-key message version %d", signalerrors.ErrInvalidMessage, messageVersion)
 	}
-	if messageVersion > ciphertextMessageCurrentVersion {
+	if messageVersion > CiphertextMessageCurrentVersion {
 		return nil, fmt.Errorf("%w: unsupported pre-key message version %d", signalerrors.ErrInvalidMessage, messageVersion)
 	}
 
@@ -85,7 +85,7 @@ func ParsePreKeySignalMessage(data []byte) (*PreKeySignalMessage, error) {
 		return nil, err
 	}
 
-	if messageVersion > ciphertextMessagePreKyberVersion {
+	if messageVersion > CiphertextMessagePreKyberVersion {
 		if kyberPreKeyID == nil || len(kyberCiphertext) == 0 {
 			return nil, fmt.Errorf("%w: kyber payload required for version %d", signalerrors.ErrInvalidMessage, messageVersion)
 		}

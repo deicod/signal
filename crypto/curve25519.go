@@ -38,6 +38,18 @@ func GenerateKeyPair() (*KeyPair, error) {
 	}, nil
 }
 
+// KeyPairFromPrivate derives the public key for the provided private key bytes.
+func KeyPairFromPrivate(privateKey [32]byte) (*KeyPair, error) {
+	pub, err := scalarBaseMult(privateKey)
+	if err != nil {
+		return nil, fmt.Errorf("derive public key: %w", err)
+	}
+	return &KeyPair{
+		PublicKey:  pub,
+		PrivateKey: privateKey,
+	}, nil
+}
+
 // DH performs a Curve25519 Diffie-Hellman and rejects low-order public keys
 // by ensuring the derived shared secret is not all zeros.
 func DH(privateKey, publicKey [32]byte) ([32]byte, error) {
