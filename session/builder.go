@@ -3,6 +3,7 @@ package session
 import (
 	"fmt"
 
+	signalerrors "github.com/deicod/signal/errors"
 	"github.com/deicod/signal/keys"
 	"github.com/deicod/signal/ratchet"
 	"github.com/deicod/signal/store"
@@ -39,7 +40,7 @@ func (b *Builder) ProcessPreKeyBundle(bundle *keys.PreKeyBundle) (*Session, *x3d
 	}
 
 	if !b.store.IsTrustedIdentity(b.remoteAddress, &bundle.IdentityKey, store.DirectionSending) {
-		return nil, nil, fmt.Errorf("untrusted identity for %v", b.remoteAddress)
+		return nil, nil, fmt.Errorf("%w: %v", signalerrors.ErrUntrustedIdentity, b.remoteAddress)
 	}
 
 	initiator := x3dh.NewInitiator(localID)
@@ -58,7 +59,9 @@ func (b *Builder) ProcessPreKeyBundle(bundle *keys.PreKeyBundle) (*Session, *x3d
 		return nil, nil, err
 	}
 
-	_ = b.store.SaveIdentity(b.remoteAddress, &bundle.IdentityKey)
+	if err := b.store.SaveIdentity(b.remoteAddress, &bundle.IdentityKey); err != nil {
+		return nil, nil, fmt.Errorf("save identity: %w", err)
+	}
 	return session, &result.InitialMessage, nil
 }
 
@@ -78,7 +81,7 @@ func (b *Builder) ProcessPreKeyMessage(msg *x3dh.Message) (*Session, []byte, err
 	}
 
 	if !b.store.IsTrustedIdentity(b.remoteAddress, &msg.IdentityKey, store.DirectionReceiving) {
-		return nil, nil, fmt.Errorf("untrusted identity for %v", b.remoteAddress)
+		return nil, nil, fmt.Errorf("%w: %v", signalerrors.ErrUntrustedIdentity, b.remoteAddress)
 	}
 
 	signedPreKey, err := b.store.LoadSignedPreKey(msg.SignedPreKeyID)
@@ -86,10 +89,10 @@ func (b *Builder) ProcessPreKeyMessage(msg *x3dh.Message) (*Session, []byte, err
 		return nil, nil, fmt.Errorf("load signed pre-key: %w", err)
 	}
 	if signedPreKey == nil {
-		return nil, nil, fmt.Errorf("signed pre-key %d not found", msg.SignedPreKeyID)
+		return nil, nil, fmt.Errorf("%w: signed pre-key %d", signalerrors.ErrPreKeyNotFound, msg.SignedPreKeyID)
 	}
 
-	responder := x3dh.NewResponder(identityKey, signedPreKey, b.store)
+	responder := x3dh.NewResponder(identityKey, signedPreKey, b.store, b.store)
 	result, err := responder.ProcessInitialMessage(msg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("x3dh responder: %w", err)
@@ -105,6 +108,8 @@ func (b *Builder) ProcessPreKeyMessage(msg *x3dh.Message) (*Session, []byte, err
 		return nil, nil, err
 	}
 
-	_ = b.store.SaveIdentity(b.remoteAddress, &msg.IdentityKey)
+	if err := b.store.SaveIdentity(b.remoteAddress, &msg.IdentityKey); err != nil {
+		return nil, nil, fmt.Errorf("save identity: %w", err)
+	}
 	return session, result.AssociatedData, nil
 }

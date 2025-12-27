@@ -59,6 +59,22 @@ func TestMemoryStoreSignedPreKeys(t *testing.T) {
 	require.False(t, ms.ContainsSignedPreKey(spk.ID))
 }
 
+func TestMemoryStoreKyberPreKeys(t *testing.T) {
+	id, _ := keys.GenerateIdentityKeyPair()
+	ms := NewStore(id, 1)
+
+	kpk, _ := keys.GenerateKyberPreKey(id, 9)
+	require.NoError(t, ms.StoreKyberPreKey(kpk.ID, kpk))
+	require.True(t, ms.ContainsKyberPreKey(kpk.ID))
+
+	loaded, err := ms.LoadKyberPreKey(kpk.ID)
+	require.NoError(t, err)
+	require.Equal(t, kpk, loaded)
+
+	require.NoError(t, ms.RemoveKyberPreKey(kpk.ID))
+	require.False(t, ms.ContainsKyberPreKey(kpk.ID))
+}
+
 func TestMemoryStoreSessions(t *testing.T) {
 	id, _ := keys.GenerateIdentityKeyPair()
 	ms := NewStore(id, 1)
@@ -66,13 +82,19 @@ func TestMemoryStoreSessions(t *testing.T) {
 	addr1 := store.Address{Name: "alice", Device: 1}
 	addr2 := store.Address{Name: "alice", Device: 2}
 
-	rec := &store.SessionRecord{}
+	data := []byte("session-record")
+	rec := &store.SessionRecord{Data: data}
 	require.NoError(t, ms.StoreSession(addr1, rec))
 	require.True(t, ms.ContainsSession(addr1))
 
 	loaded, err := ms.LoadSession(addr1)
 	require.NoError(t, err)
 	require.Equal(t, rec, loaded)
+
+	data[0] ^= 0xff
+	loaded2, err := ms.LoadSession(addr1)
+	require.NoError(t, err)
+	require.NotEqual(t, rec, loaded2) // stored value is cloned on write
 
 	require.NoError(t, ms.DeleteSession(addr1))
 	require.False(t, ms.ContainsSession(addr1))
@@ -82,4 +104,74 @@ func TestMemoryStoreSessions(t *testing.T) {
 	require.NoError(t, ms.DeleteAllSessions("alice"))
 	require.False(t, ms.ContainsSession(addr1))
 	require.False(t, ms.ContainsSession(addr2))
+}
+
+func TestMemoryStoreSenderKeys(t *testing.T) {
+	id, _ := keys.GenerateIdentityKeyPair()
+	ms := NewStore(id, 1)
+
+	name := store.SenderKeyName{
+		Group:  "group-1",
+		Sender: store.Address{Name: "alice", Device: 1},
+	}
+
+	data := []byte("sender-key-record")
+	rec := &store.SenderKeyRecord{Data: data}
+
+	require.NoError(t, ms.StoreSenderKey(name, rec))
+	require.True(t, ms.ContainsSenderKey(name))
+
+	loaded, err := ms.LoadSenderKey(name)
+	require.NoError(t, err)
+	require.Equal(t, rec, loaded)
+
+	data[0] ^= 0xff
+	loaded2, err := ms.LoadSenderKey(name)
+	require.NoError(t, err)
+	require.NotEqual(t, rec, loaded2) // stored value is cloned on write
+
+	require.NoError(t, ms.DeleteSenderKey(name))
+	require.False(t, ms.ContainsSenderKey(name))
+
+	name2 := store.SenderKeyName{
+		Group:  "group-1",
+		Sender: store.Address{Name: "bob", Device: 1},
+	}
+	name3 := store.SenderKeyName{
+		Group:  "group-2",
+		Sender: store.Address{Name: "bob", Device: 1},
+	}
+	require.NoError(t, ms.StoreSenderKey(name, rec))
+	require.NoError(t, ms.StoreSenderKey(name2, rec))
+	require.NoError(t, ms.StoreSenderKey(name3, rec))
+	require.NoError(t, ms.DeleteAllSenderKeys("group-1"))
+	require.False(t, ms.ContainsSenderKey(name))
+	require.False(t, ms.ContainsSenderKey(name2))
+	require.True(t, ms.ContainsSenderKey(name3))
+}
+
+func TestMemoryStoreSesameState(t *testing.T) {
+	id, _ := keys.GenerateIdentityKeyPair()
+	ms := NewStore(id, 1)
+
+	rec, err := ms.LoadSesameState()
+	require.NoError(t, err)
+	require.Nil(t, rec)
+
+	data := []byte("sesame")
+	require.NoError(t, ms.StoreSesameState(&store.SesameRecord{Data: data}))
+
+	loaded, err := ms.LoadSesameState()
+	require.NoError(t, err)
+	require.Equal(t, &store.SesameRecord{Data: data}, loaded)
+
+	data[0] ^= 0xff
+	loaded2, err := ms.LoadSesameState()
+	require.NoError(t, err)
+	require.NotEqual(t, &store.SesameRecord{Data: data}, loaded2) // stored value is cloned on write
+
+	require.NoError(t, ms.DeleteSesameState())
+	loaded, err = ms.LoadSesameState()
+	require.NoError(t, err)
+	require.Nil(t, loaded)
 }

@@ -60,7 +60,7 @@ func GenerateSignedPreKey(identityKey *IdentityKeyPair, id uint32) (*SignedPreKe
 	if err != nil {
 		return nil, fmt.Errorf("generate signed pre-key: %w", err)
 	}
-	sig, err := identityKey.Sign(kp.PublicKey[:])
+	sig, err := identityKey.Sign(SerializeWirePublicKey(kp.PublicKey))
 	if err != nil {
 		return nil, fmt.Errorf("sign pre-key: %w", err)
 	}
@@ -77,5 +77,5 @@ func (spk *SignedPreKey) VerifySignedPreKey(identity *IdentityKey) bool {
 	if spk == nil || identity == nil {
 		return false
 	}
-	return identity.Verify(spk.KeyPair.PublicKey[:], spk.Signature)
+	return identity.Verify(SerializeWirePublicKey(spk.KeyPair.PublicKey), spk.Signature)
 }

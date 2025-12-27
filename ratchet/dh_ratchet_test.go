@@ -41,3 +41,26 @@ func TestDHRatchetUpdatesKeysAndCounters(t *testing.T) {
 	require.NotZero(t, state.CKs)
 	require.NotZero(t, state.CKr)
 }
+
+func TestDHRatchetCleansSkippedKeys(t *testing.T) {
+	state, _, _, _ := buildTestStates(t)
+
+	remoteOld := *state.DHr
+	remoteNew, err := crypto.GenerateKeyPair()
+	require.NoError(t, err)
+
+	var mkOld [32]byte
+	mkOld[0] = 0x01
+	var mkNew [32]byte
+	mkNew[0] = 0x02
+
+	state.MKSkipped[SkippedKey{PublicKey: remoteOld, N: 1}] = mkOld
+	state.MKSkipped[SkippedKey{PublicKey: remoteNew.PublicKey, N: 2}] = mkNew
+
+	err = state.DHRatchet(remoteNew.PublicKey)
+	require.NoError(t, err)
+
+	require.Len(t, state.MKSkipped, 1)
+	_, ok := state.MKSkipped[SkippedKey{PublicKey: remoteNew.PublicKey, N: 2}]
+	require.True(t, ok)
+}

@@ -1,6 +1,11 @@
 package ratchet
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+
+	signalerrors "github.com/deicod/signal/errors"
+)
 
 // MaxSkip defines the maximum number of skipped message keys to retain to
 // mitigate unbounded memory growth.
@@ -9,8 +14,11 @@ const MaxSkip = 1000
 // skipMessageKeys stores message keys for skipped message numbers up to (but not including) until.
 func (s *State) skipMessageKeys(until uint32) error {
 	for s.Nr < until {
+		if s.Nr == math.MaxUint32 {
+			return fmt.Errorf("%w: receive counter overflow", signalerrors.ErrCounterOverflow)
+		}
 		if len(s.MKSkipped) >= MaxSkip {
-			return fmt.Errorf("ratchet: max skipped message keys exceeded")
+			return fmt.Errorf("%w: ratchet max skipped message keys exceeded", signalerrors.ErrMaxSkipExceeded)
 		}
 		if s.DHr == nil {
 			return fmt.Errorf("ratchet: missing DHr while skipping")
@@ -27,18 +35,11 @@ func (s *State) skipMessageKeys(until uint32) error {
 	return nil
 }
 
-// trySkippedMessageKey returns a skipped message key if present for the given header.
-func (s *State) trySkippedMessageKey(header *Header) (*[32]byte, bool) {
+func skippedKeyForHeader(header *Header) (SkippedKey, bool) {
 	if header == nil {
-		return nil, false
+		return SkippedKey{}, false
 	}
-	key := SkippedKey{PublicKey: header.DH, N: header.N}
-	mk, ok := s.MKSkipped[key]
-	if !ok {
-		return nil, false
-	}
-	delete(s.MKSkipped, key)
-	return &mk, true
+	return SkippedKey{PublicKey: header.DH, N: header.N}, true
 }
 
 // cleanupSkippedKeys drops skipped keys that belong to older DH ratchets to prevent unbounded growth.

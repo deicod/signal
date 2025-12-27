@@ -1,23 +1,14 @@
 package x3dh
 
 import (
-	"crypto/sha256"
-
 	"github.com/deicod/signal/keys"
 )
 
-// AssociatedData constructs the AD = H(initiator identity || responder identity).
+// AssociatedData constructs AD = Encode(IKa) || Encode(IKb).
+// For wire compatibility, Encode(IK) is the 33-byte libsignal public key serialization.
 func AssociatedData(initiator keys.IdentityKey, responder keys.IdentityKey) []byte {
-	h := sha256.New()
-	h.Write(initiator.PublicKey[:])
-	h.Write(responder.PublicKey[:])
-	h.Write(initiator.SigningPublic[:])
-	h.Write(responder.SigningPublic[:])
-	return h.Sum(nil)
-}
-
-func zeroBytes(b []byte) {
-	for i := range b {
-		b[i] = 0
-	}
+	ad := make([]byte, 0, 66)
+	ad = append(ad, keys.SerializeWirePublicKey(initiator.PublicKey)...)
+	ad = append(ad, keys.SerializeWirePublicKey(responder.PublicKey)...)
+	return ad
 }

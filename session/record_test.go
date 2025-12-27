@@ -3,6 +3,7 @@ package session
 import (
 	"testing"
 
+	signalerrors "github.com/deicod/signal/errors"
 	"github.com/deicod/signal/ratchet"
 	"github.com/stretchr/testify/require"
 )
@@ -58,6 +59,54 @@ func TestRecordErrorsOnNil(t *testing.T) {
 	rec := &Record{}
 	_, err = rec.Serialize()
 	require.Error(t, err)
+}
+
+func TestRecordSerializeHeader(t *testing.T) {
+	state, localID, remoteID := buildRatchetState(t)
+	sess, err := NewSession(state, localID, remoteID, nil)
+	require.NoError(t, err)
+
+	rec, err := NewRecord(sess, 1)
+	require.NoError(t, err)
+	wire, err := rec.Serialize()
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(wire), 5)
+	require.Equal(t, []byte("SIGR"), wire[:4])
+	require.Equal(t, byte(1), wire[4])
+}
+
+func TestDeserializeRecordRejectsBadData(t *testing.T) {
+	_, err := DeserializeRecord(nil)
+	require.ErrorIs(t, err, signalerrors.ErrInvalidMessage)
+
+	_, err = DeserializeRecord([]byte("nope"))
+	require.ErrorIs(t, err, signalerrors.ErrInvalidMessage)
+}
+
+func TestRecordSerializeDeterministic(t *testing.T) {
+	state, localID, remoteID := buildRatchetState(t)
+	sess, err := NewSession(state, localID, remoteID, []byte("ad"))
+	require.NoError(t, err)
+
+	rec, err := NewRecord(sess, 2)
+	require.NoError(t, err)
+
+	next := sess.clone()
+	next.ratchetState = state.Clone()
+	next.ratchetState.Ns++
+	require.NoError(t, rec.Promote(next))
+
+	wire1, err := rec.Serialize()
+	require.NoError(t, err)
+	wire2, err := rec.Serialize()
+	require.NoError(t, err)
+	require.Equal(t, wire1, wire2)
+
+	decoded, err := DeserializeRecord(wire1)
+	require.NoError(t, err)
+	wire3, err := decoded.Serialize()
+	require.NoError(t, err)
+	require.Equal(t, wire1, wire3)
 }
 
 // buildRatchetState is shared with session tests but kept private here for clarity.

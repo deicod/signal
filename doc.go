@@ -1,5 +1,8 @@
-// Package signal provides a Go implementation of the Signal Protocol.
-// The package is scaffolded per the roadmap in spec.md and will be filled
-// out with cryptographic primitives, session management, and protocol
-// support in subsequent milestones.
+// Package signal provides a Go implementation of the Signal protocol building blocks.
+//
+// Most applications should start with Cipher. Ciphertext outputs are opaque []byte
+// and session state is persisted via a store.ProtocolStore implementation.
+//
+// Note: Wire compatibility is in progress. EnvelopeCipher preserves the legacy internal
+// ciphertext envelope format.
 package signal

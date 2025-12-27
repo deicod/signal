@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	signalerrors "github.com/deicod/signal/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -62,6 +63,85 @@ func TestOutOfOrderDelivery(t *testing.T) {
 	pt, err = bob.Decrypt(msg2, ad)
 	require.NoError(t, err)
 	require.Equal(t, []byte("two"), pt)
+}
+
+func TestOutOfOrderAcrossRatchetStep(t *testing.T) {
+	alice, bob, initRes, _ := buildTestStates(t)
+	ad := initRes.AssociatedData
+
+	old1, err := alice.Encrypt([]byte("old-1"), ad)
+	require.NoError(t, err)
+	old2, err := alice.Encrypt([]byte("old-2"), ad)
+	require.NoError(t, err)
+
+	// Deliver one old-chain message so Bob ratchets to Alice's current DH.
+	pt, err := bob.Decrypt(old1, ad)
+	require.NoError(t, err)
+	require.Equal(t, []byte("old-1"), pt)
+
+	// Bob sends a message that triggers a DH ratchet when Alice receives it.
+	bobMsg, err := bob.Encrypt([]byte("bob-1"), ad)
+	require.NoError(t, err)
+	plain, err := alice.Decrypt(bobMsg, ad)
+	require.NoError(t, err)
+	require.Equal(t, []byte("bob-1"), plain)
+
+	// Alice now sends with a new DH.
+	new1, err := alice.Encrypt([]byte("new-1"), ad)
+	require.NoError(t, err)
+
+	// Deliver out of order: new chain message first, then old chain messages.
+	pt, err = bob.Decrypt(new1, ad)
+	require.NoError(t, err)
+	require.Equal(t, []byte("new-1"), pt)
+
+	_, err = bob.Decrypt(old2, ad)
+	require.ErrorIs(t, err, signalerrors.ErrDuplicateMessage)
+}
+
+func TestDuplicateMessageRejected(t *testing.T) {
+	alice, bob, initRes, _ := buildTestStates(t)
+	ad := initRes.AssociatedData
+
+	msg, err := alice.Encrypt([]byte("hi bob"), ad)
+	require.NoError(t, err)
+
+	pt, err := bob.Decrypt(msg, ad)
+	require.NoError(t, err)
+	require.Equal(t, []byte("hi bob"), pt)
+
+	_, err = bob.Decrypt(msg, ad)
+	require.Error(t, err)
+	require.ErrorIs(t, err, signalerrors.ErrDuplicateMessage)
+}
+
+func TestOldChainMessageRejectedAfterRatchet(t *testing.T) {
+	alice, bob, initRes, _ := buildTestStates(t)
+	ad := initRes.AssociatedData
+
+	old1, err := alice.Encrypt([]byte("old-1"), ad)
+	require.NoError(t, err)
+	old2, err := alice.Encrypt([]byte("old-2"), ad)
+	require.NoError(t, err)
+
+	// Deliver one old-chain message so Bob ratchets to Alice's current DH.
+	pt, err := bob.Decrypt(old1, ad)
+	require.NoError(t, err)
+	require.Equal(t, []byte("old-1"), pt)
+
+	// Trigger a ratchet and deliver the new-chain message first so Bob stores skipped keys.
+	bobMsg, err := bob.Encrypt([]byte("bob-1"), ad)
+	require.NoError(t, err)
+	_, err = alice.Decrypt(bobMsg, ad)
+	require.NoError(t, err)
+
+	new1, err := alice.Encrypt([]byte("new-1"), ad)
+	require.NoError(t, err)
+	_, err = bob.Decrypt(new1, ad)
+	require.NoError(t, err)
+
+	_, err = bob.Decrypt(old2, ad)
+	require.ErrorIs(t, err, signalerrors.ErrDuplicateMessage)
 }
 
 func TestMessageLossAndRecovery(t *testing.T) {

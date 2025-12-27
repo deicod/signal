@@ -8,9 +8,6 @@ import (
 	"github.com/deicod/signal/keys"
 )
 
-// infoString used for HKDF info.
-var infoString = []byte("X3DH")
-
 // Initiator performs the initiator side of the X3DH handshake.
 type Initiator struct {
 	identityKey *keys.IdentityKeyPair
@@ -63,24 +60,47 @@ func (x *Initiator) ProcessPreKeyBundle(bundle *keys.PreKeyBundle) (*Result, err
 		ikm = append(ikm, dh4[:]...)
 	}
 
-	secretBytes, err := signalcrypto.HKDF(ikm, nil, infoString, 32)
-	if err != nil {
-		return nil, fmt.Errorf("initiator: hkdf: %w", err)
-	}
 	var shared [32]byte
-	copy(shared[:], secretBytes)
-	zeroBytes(ikm)
-	zeroBytes(secretBytes)
+	var initialChain *[32]byte
+	var kyberCiphertext []byte
+
+	if bundle.KyberPreKeyID != nil {
+		kyberSS, kyberCT, err := signalcrypto.Kyber1024Encapsulate(bundle.KyberPreKeyPublic)
+		if err != nil {
+			return nil, fmt.Errorf("initiator: kyber encapsulate: %w", err)
+		}
+		ikmPQ := append(append([]byte{}, discontinuity...), ikm...)
+		ikmPQ = append(ikmPQ, kyberSS...)
+		root, chain, err := derivePQSecret(ikmPQ)
+		if err != nil {
+			return nil, fmt.Errorf("initiator: hkdf: %w", err)
+		}
+		shared = root
+		initialChain = &chain
+		kyberCiphertext = kyberCT
+		signalcrypto.ZeroBytes(kyberSS)
+		signalcrypto.ZeroBytes(ikmPQ)
+	} else {
+		root, err := deriveLegacySecret(ikm)
+		if err != nil {
+			return nil, fmt.Errorf("initiator: hkdf: %w", err)
+		}
+		shared = root
+	}
+	signalcrypto.ZeroBytes(ikm)
 
 	msg := Message{
 		IdentityKey:    x.identityKey.PublicKey,
 		EphemeralKey:   ephemeral.PublicKey,
 		PreKeyID:       bundle.PreKeyID,
 		SignedPreKeyID: bundle.SignedPreKeyID,
+		KyberPreKeyID:  bundle.KyberPreKeyID,
+		KyberCiphertext: kyberCiphertext,
 	}
 
 	return &Result{
 		SharedSecret:     shared,
+		InitialChainKey:  initialChain,
 		AssociatedData:   AssociatedData(x.identityKey.PublicKey, bundle.IdentityKey),
 		RemoteIdentity:   bundle.IdentityKey,
 		InitialMessage:   msg,

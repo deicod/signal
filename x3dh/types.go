@@ -11,12 +11,15 @@ type Message struct {
 	EphemeralKey   [32]byte
 	PreKeyID       *uint32
 	SignedPreKeyID uint32
+	KyberPreKeyID  *uint32
+	KyberCiphertext []byte
 	Ciphertext     []byte
 }
 
 // Result carries the derived shared secret and associated metadata.
 type Result struct {
 	SharedSecret     [32]byte
+	InitialChainKey  *[32]byte
 	AssociatedData   []byte
 	RemoteIdentity   keys.IdentityKey
 	InitialMessage   Message

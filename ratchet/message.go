@@ -3,8 +3,10 @@ package ratchet
 import (
 	"errors"
 	"fmt"
+	"math"
 
 	signalcrypto "github.com/deicod/signal/crypto"
+	signalerrors "github.com/deicod/signal/errors"
 )
 
 // Message holds an encrypted payload and header.
@@ -24,6 +26,9 @@ func (s *State) Encrypt(plaintext, associatedData []byte) (*Message, error) {
 	if s.CKs == ([32]byte{}) {
 		return nil, fmt.Errorf("encrypt: missing sending chain key")
 	}
+	if s.Ns == math.MaxUint32 {
+		return nil, fmt.Errorf("%w: send counter overflow", signalerrors.ErrCounterOverflow)
+	}
 
 	header := Header{
 		DH: s.DHs.PublicKey,
@@ -35,10 +40,11 @@ func (s *State) Encrypt(plaintext, associatedData []byte) (*Message, error) {
 	s.CKs = newCKs
 	s.Ns++
 
-	encKey, _, _ := DeriveMessageKeys(mk)
+	encKey, _, iv := DeriveMessageKeys(mk)
+	nonce := iv[:12]
 	ad := messageAD(associatedData, &header)
 
-	ciphertext, nonce, err := signalcrypto.AESGCMEncrypt(encKey, plaintext, ad)
+	ciphertext, err := signalcrypto.AESGCMEncryptWithNonce(encKey, plaintext, nonce, ad)
 	if err != nil {
 		return nil, fmt.Errorf("encrypt: %w", err)
 	}
@@ -59,32 +65,59 @@ func (s *State) Decrypt(msg *Message, associatedData []byte) ([]byte, error) {
 		return nil, fmt.Errorf("decrypt: state is nil")
 	}
 
-	if mk, ok := s.trySkippedMessageKey(&msg.Header); ok {
-		return decryptWithMessageKey(mk, msg, associatedData)
-	}
-
-	if s.DHr == nil || *s.DHr != msg.Header.DH {
-		if err := s.skipMessageKeys(msg.Header.PN); err != nil {
-			return nil, err
-		}
-		if err := s.DHRatchet(msg.Header.DH); err != nil {
-			return nil, err
+	if key, ok := skippedKeyForHeader(&msg.Header); ok {
+		if mk, ok := s.MKSkipped[key]; ok {
+			plaintext, err := decryptWithMessageKey(&mk, msg, associatedData)
+			if err != nil {
+				return nil, err
+			}
+			delete(s.MKSkipped, key)
+			return plaintext, nil
 		}
 	}
 
-	if err := s.skipMessageKeys(msg.Header.N); err != nil {
+	next := s.Clone()
+
+	if next.DHr != nil && msg.Header.DH == *next.DHr && msg.Header.N < next.Nr {
+		return nil, fmt.Errorf("%w: message already processed", signalerrors.ErrDuplicateMessage)
+	}
+
+	if next.DHr != nil && msg.Header.DH != *next.DHr {
+		if _, ok := next.SeenDH[msg.Header.DH]; ok {
+			return nil, fmt.Errorf("%w: message for previous ratchet key", signalerrors.ErrDuplicateMessage)
+		}
+	}
+
+	if next.DHr == nil || *next.DHr != msg.Header.DH {
+		if err := next.skipMessageKeys(msg.Header.PN); err != nil {
+			return nil, err
+		}
+		if err := next.DHRatchet(msg.Header.DH); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := next.skipMessageKeys(msg.Header.N); err != nil {
 		return nil, err
 	}
 
-	if s.CKr == ([32]byte{}) {
+	if next.CKr == ([32]byte{}) {
 		return nil, fmt.Errorf("decrypt: missing receiving chain key")
 	}
+	if next.Nr == math.MaxUint32 {
+		return nil, fmt.Errorf("%w: receive counter overflow", signalerrors.ErrCounterOverflow)
+	}
 
-	newCKr, mk := KDFChain(s.CKr)
-	s.CKr = newCKr
-	s.Nr++
+	newCKr, mk := KDFChain(next.CKr)
+	next.CKr = newCKr
+	next.Nr++
 
-	return decryptWithMessageKey(&mk, msg, associatedData)
+	plaintext, err := decryptWithMessageKey(&mk, msg, associatedData)
+	if err != nil {
+		return nil, err
+	}
+	*s = *next
+	return plaintext, nil
 }
 
 func messageAD(associatedData []byte, header *Header) []byte {
@@ -95,7 +128,7 @@ func messageAD(associatedData []byte, header *Header) []byte {
 func decryptWithMessageKey(mk *[32]byte, msg *Message, associatedData []byte) ([]byte, error) {
 	encKey, _, _ := DeriveMessageKeys(*mk)
 	if len(msg.Ciphertext) < 12 {
-		return nil, fmt.Errorf("decrypt: ciphertext too short")
+		return nil, fmt.Errorf("%w: decrypt ciphertext too short", signalerrors.ErrInvalidMessage)
 	}
 	nonce := msg.Ciphertext[:12]
 	body := msg.Ciphertext[12:]
@@ -103,7 +136,7 @@ func decryptWithMessageKey(mk *[32]byte, msg *Message, associatedData []byte) ([
 
 	plaintext, err := signalcrypto.AESGCMDecrypt(encKey, body, nonce, ad)
 	if err != nil {
-		return nil, fmt.Errorf("decrypt: %w", err)
+		return nil, errors.Join(signalerrors.ErrInvalidMAC, fmt.Errorf("decrypt: %w", err))
 	}
 	return plaintext, nil
 }

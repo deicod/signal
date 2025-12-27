@@ -32,7 +32,7 @@ func TestDeriveMessageKeys(t *testing.T) {
 	require.Equal(t, 32, len(enc))
 	require.Equal(t, 32, len(auth))
 	require.Equal(t, 16, len(iv))
-	require.Equal(t, "a65e0fec3289690396f94cf6afbd96f505b670b2e0199e501e371aebbf61cf9b", hex.EncodeToString(enc))
-	require.Equal(t, "596038f20154dc71b377768095ba2886edafd62aa86b2701db58e017613a1b33", hex.EncodeToString(auth))
-	require.Equal(t, "de40a4630dbb0df974a7b600c10fbfbe", hex.EncodeToString(iv))
+	require.Equal(t, "b95813c5c7f97f334a62a6f360cc6ec08a26eecb5d5acd8326ff929ebf33378f", hex.EncodeToString(enc))
+	require.Equal(t, "9c79e3278033b157e764a04fafd14c38f2d972bdaf7d0c420a64c189574d4e15", hex.EncodeToString(auth))
+	require.Equal(t, "07f0996c3d506daef3577e16fd32928a", hex.EncodeToString(iv))
 }

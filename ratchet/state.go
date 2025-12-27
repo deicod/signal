@@ -28,6 +28,11 @@ type State struct {
 
 	// Skipped message keys
 	MKSkipped map[SkippedKey][32]byte
+
+	// SeenDH tracks remote DH ratchet public keys we've already processed.
+	// It is used to avoid ratcheting "backwards" when very old or duplicate
+	// messages arrive after state has advanced.
+	SeenDH map[[32]byte]struct{}
 }
 
 // SkippedKey indexes skipped message keys.
@@ -48,11 +53,24 @@ func InitializeState(x3 *x3dh.Result, isInitiator bool) (*State, error) {
 	state := &State{
 		RK:        x3.SharedSecret,
 		MKSkipped: make(map[SkippedKey][32]byte),
+		SeenDH:    make(map[[32]byte]struct{}),
 	}
 
 	if isInitiator {
 		var err error
-		if x3.LocalEphemeral != nil {
+		if x3.RemoteRatchetKey == nil {
+			return nil, errors.New("ratchet: initiator missing remote ratchet key")
+		}
+		state.DHr = x3.RemoteRatchetKey
+		state.SeenDH[*state.DHr] = struct{}{}
+
+		if x3.InitialChainKey != nil {
+			state.CKr = *x3.InitialChainKey
+			state.DHs, err = signalcrypto.GenerateKeyPair()
+			if err != nil {
+				return nil, fmt.Errorf("ratchet: generate initiator dh: %w", err)
+			}
+		} else if x3.LocalEphemeral != nil {
 			kp := *x3.LocalEphemeral
 			state.DHs = &kp
 		} else {
@@ -61,10 +79,6 @@ func InitializeState(x3 *x3dh.Result, isInitiator bool) (*State, error) {
 				return nil, fmt.Errorf("ratchet: generate initiator dh: %w", err)
 			}
 		}
-		if x3.RemoteRatchetKey == nil {
-			return nil, errors.New("ratchet: initiator missing remote ratchet key")
-		}
-		state.DHr = x3.RemoteRatchetKey
 
 		dhOut, err := signalcrypto.DH(state.DHs.PrivateKey, *state.DHr)
 		if err != nil {
@@ -79,6 +93,7 @@ func InitializeState(x3 *x3dh.Result, isInitiator bool) (*State, error) {
 	} else {
 		remoteDH := x3.InitialMessage.EphemeralKey
 		state.DHr = &remoteDH
+		state.SeenDH[*state.DHr] = struct{}{}
 
 		if x3.LocalRatchetKey != nil {
 			kp := *x3.LocalRatchetKey
@@ -91,34 +106,38 @@ func InitializeState(x3 *x3dh.Result, isInitiator bool) (*State, error) {
 			state.DHs = dh
 		}
 
-		// First derive receiving chain from initial DH.
-		dhRecv, err := signalcrypto.DH(state.DHs.PrivateKey, remoteDH)
-		if err != nil {
-			return nil, fmt.Errorf("ratchet: initial dh (responder): %w", err)
-		}
-		newRK, ckr, err := KDFRoot(state.RK, dhRecv)
-		if err != nil {
-			return nil, err
-		}
-		state.RK = newRK
-		state.CKr = ckr
+		if x3.InitialChainKey != nil {
+			state.CKs = *x3.InitialChainKey
+		} else {
+			// First derive receiving chain from initial DH.
+			dhRecv, err := signalcrypto.DH(state.DHs.PrivateKey, remoteDH)
+			if err != nil {
+				return nil, fmt.Errorf("ratchet: initial dh (responder): %w", err)
+			}
+			newRK, ckr, err := KDFRoot(state.RK, dhRecv)
+			if err != nil {
+				return nil, err
+			}
+			state.RK = newRK
+			state.CKr = ckr
 
-		// Prepare a fresh DHs for sending chain.
-		newDH, err := signalcrypto.GenerateKeyPair()
-		if err != nil {
-			return nil, fmt.Errorf("ratchet: generate send dh: %w", err)
+			// Prepare a fresh DHs for sending chain.
+			newDH, err := signalcrypto.GenerateKeyPair()
+			if err != nil {
+				return nil, fmt.Errorf("ratchet: generate send dh: %w", err)
+			}
+			dhSend, err := signalcrypto.DH(newDH.PrivateKey, remoteDH)
+			if err != nil {
+				return nil, fmt.Errorf("ratchet: dh send setup: %w", err)
+			}
+			newRK, cks, err := KDFRoot(state.RK, dhSend)
+			if err != nil {
+				return nil, err
+			}
+			state.RK = newRK
+			state.CKs = cks
+			state.DHs = newDH
 		}
-		dhSend, err := signalcrypto.DH(newDH.PrivateKey, remoteDH)
-		if err != nil {
-			return nil, fmt.Errorf("ratchet: dh send setup: %w", err)
-		}
-		newRK, cks, err := KDFRoot(state.RK, dhSend)
-		if err != nil {
-			return nil, err
-		}
-		state.RK = newRK
-		state.CKs = cks
-		state.DHs = newDH
 	}
 
 	return state, nil
@@ -141,6 +160,10 @@ func (s *State) Clone() *State {
 	clone.MKSkipped = make(map[SkippedKey][32]byte, len(s.MKSkipped))
 	for k, v := range s.MKSkipped {
 		clone.MKSkipped[k] = v
+	}
+	clone.SeenDH = make(map[[32]byte]struct{}, len(s.SeenDH))
+	for k := range s.SeenDH {
+		clone.SeenDH[k] = struct{}{}
 	}
 	return &clone
 }

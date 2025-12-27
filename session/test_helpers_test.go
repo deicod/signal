@@ -17,8 +17,9 @@ func buildRatchetState(tb testing.TB) (*ratchet.State, *keys.IdentityKey, *keys.
 	respID, _ := keys.GenerateIdentityKeyPair()
 	signed, _ := keys.GenerateSignedPreKey(respID, 10)
 	pre, _ := keys.GeneratePreKey(11)
+	kyber, _ := keys.GenerateKyberPreKey(respID, 12)
 
-	bundle, err := keys.NewPreKeyBundle(1, 1, pre, signed, respID.PublicKey)
+	bundle, err := keys.NewPreKeyBundleWithKyber(1, 1, pre, signed, kyber, respID.PublicKey)
 	require.NoError(tb, err)
 
 	initRes, err := x3dh.NewInitiator(initID).ProcessPreKeyBundle(bundle)
@@ -26,8 +27,9 @@ func buildRatchetState(tb testing.TB) (*ratchet.State, *keys.IdentityKey, *keys.
 
 	store := memory.NewStore(respID, 1)
 	require.NoError(tb, store.StorePreKey(pre.ID, pre))
+	require.NoError(tb, store.StoreKyberPreKey(kyber.ID, kyber))
 
-	responder := x3dh.NewResponder(respID, signed, store)
+	responder := x3dh.NewResponder(respID, signed, store, store)
 	respRes, err := responder.ProcessInitialMessage(&initRes.InitialMessage)
 	require.NoError(tb, err)
 

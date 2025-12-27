@@ -14,7 +14,7 @@ func TestInitializeStateFromX3DHInitiator(t *testing.T) {
 	require.NotNil(t, alice.DHr)
 	require.NotZero(t, alice.RK)
 	require.NotZero(t, alice.CKs)
-	require.Zero(t, alice.CKr)
+	require.NotZero(t, alice.CKr)
 }
 
 func TestInitializeStateFromX3DHResponder(t *testing.T) {
@@ -22,8 +22,8 @@ func TestInitializeStateFromX3DHResponder(t *testing.T) {
 	require.NotNil(t, bob.DHs)
 	require.NotNil(t, bob.DHr)
 	require.Equal(t, respRes.InitialMessage.EphemeralKey, *bob.DHr)
-	require.NotZero(t, bob.CKr)
 	require.NotZero(t, bob.CKs)
+	require.Zero(t, bob.CKr)
 }
 
 func TestInitializeStateRejectsInvalidSharedSecret(t *testing.T) {

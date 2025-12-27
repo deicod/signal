@@ -16,9 +16,9 @@ func KDFChain(chainKey [32]byte) (newChainKey, messageKey [32]byte) {
 }
 
 // DeriveMessageKeys expands a message key into encryption key, authentication key, and IV.
-// Uses HKDF-SHA256 with info "MessageKeys" to derive encKey(32), authKey(32), iv(16).
+// Uses HKDF-SHA256 with info "WhisperMessageKeys" to derive encKey(32), authKey(32), iv(16).
 func DeriveMessageKeys(messageKey [32]byte) (encKey, authKey, iv []byte) {
-	info := []byte("MessageKeys")
+	info := []byte("WhisperMessageKeys")
 	okm, _ := signalcrypto.HKDF(messageKey[:], nil, info, 32+32+16)
 	encKey = okm[:32]
 	authKey = okm[32:64]

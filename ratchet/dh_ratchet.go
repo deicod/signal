@@ -7,10 +7,10 @@ import (
 )
 
 // KDFRoot derives a new root key and chain key from the current root key and DH output.
-// Uses HKDF with distinct info label.
+// Uses HKDF with libsignal's "WhisperRatchet" info label.
 func KDFRoot(rootKey [32]byte, dhOutput [32]byte) (newRootKey, chainKey [32]byte, err error) {
-	info := []byte("DoubleRatchetRootKDF")
-	okm, err := signalcrypto.HKDF(append(rootKey[:], dhOutput[:]...), nil, info, 64)
+	info := []byte("WhisperRatchet")
+	okm, err := signalcrypto.HKDF(dhOutput[:], rootKey[:], info, 64)
 	if err != nil {
 		return newRootKey, chainKey, fmt.Errorf("kdf root: %w", err)
 	}
@@ -24,6 +24,13 @@ func (s *State) DHRatchet(theirPublicKey [32]byte) error {
 	if s.DHs == nil {
 		return fmt.Errorf("dh ratchet: missing local dh key")
 	}
+	if s.SeenDH == nil {
+		s.SeenDH = make(map[[32]byte]struct{})
+	}
+	if s.DHr != nil {
+		s.SeenDH[*s.DHr] = struct{}{}
+	}
+	s.SeenDH[theirPublicKey] = struct{}{}
 	// Update PN and reset message numbers.
 	s.PN = s.Ns
 	s.Ns = 0
@@ -58,6 +65,9 @@ func (s *State) DHRatchet(theirPublicKey [32]byte) error {
 	s.RK = newRoot
 	s.CKs = newCKs
 	s.DHr = &theirPublicKey
-	s.cleanupSkippedKeys(*s.DHr)
+	if s.MKSkipped == nil {
+		s.MKSkipped = make(map[SkippedKey][32]byte)
+	}
+	s.cleanupSkippedKeys(theirPublicKey)
 	return nil
 }

@@ -50,8 +50,9 @@ func TestBundleSerializeRoundTrip(t *testing.T) {
 	identity, _ := GenerateIdentityKeyPair()
 	pre, _ := GeneratePreKey(10)
 	signed, _ := GenerateSignedPreKey(identity, 20)
+	kyber, _ := GenerateKyberPreKey(identity, 30)
 
-	bundle, err := NewPreKeyBundle(1234, 2, pre, signed, identity.PublicKey)
+	bundle, err := NewPreKeyBundleWithKyber(1234, 2, pre, signed, kyber, identity.PublicKey)
 	require.NoError(t, err)
 
 	enc, err := bundle.Serialize()
@@ -67,6 +68,10 @@ func TestBundleSerializeRoundTrip(t *testing.T) {
 	require.Equal(t, bundle.SignedPreKeyID, decoded.SignedPreKeyID)
 	require.Equal(t, bundle.SignedPreKeyPublic, decoded.SignedPreKeyPublic)
 	require.Equal(t, bundle.SignedPreKeySignature, decoded.SignedPreKeySignature)
+	require.NotNil(t, decoded.KyberPreKeyID)
+	require.Equal(t, *bundle.KyberPreKeyID, *decoded.KyberPreKeyID)
+	require.Equal(t, bundle.KyberPreKeyPublic, decoded.KyberPreKeyPublic)
+	require.Equal(t, bundle.KyberPreKeySignature, decoded.KyberPreKeySignature)
 	require.Equal(t, bundle.IdentityKey, decoded.IdentityKey)
 }
 

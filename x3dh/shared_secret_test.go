@@ -12,7 +12,7 @@ func TestAssociatedDataDeterministic(t *testing.T) {
 	init := fixedIdentity(t, "0102030405060708090a0b0c0d0e0f00112233445566778899aabbccddeeff00", "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebe")
 	resp := fixedIdentity(t, "ffffffffeeeeeeeeddddddddccccccccbbbbbbbbaaaaaaaa9999999988888888", "1111111122222222333333334444444455555555666666667777777788888888")
 	ad := AssociatedData(init, resp)
-	require.Equal(t, "1b6000dfddfae87774ec1470af27c7914aa6b6164c23ea980287ecd067253a07", hex.EncodeToString(ad))
+	require.Equal(t, "050102030405060708090a0b0c0d0e0f00112233445566778899aabbccddeeff0005ffffffffeeeeeeeeddddddddccccccccbbbbbbbbaaaaaaaa9999999988888888", hex.EncodeToString(ad))
 }
 
 func fixedIdentity(tb testing.TB, curveHex, signHex string) keys.IdentityKey {

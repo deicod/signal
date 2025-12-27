@@ -115,6 +115,25 @@ func AESGCMDecrypt(key, ciphertext, nonce, associatedData []byte) ([]byte, error
 	return a.Decrypt(key, combined, associatedData)
 }
 
+// AESGCMEncryptWithNonce encrypts using AES-256-GCM with a caller-provided nonce.
+func AESGCMEncryptWithNonce(key, plaintext, nonce, associatedData []byte) ([]byte, error) {
+	if len(key) != 32 {
+		return nil, ErrInvalidKey
+	}
+	if len(nonce) != 12 {
+		return nil, ErrCiphertextTooShort
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("aes cipher: %w", err)
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("gcm: %w", err)
+	}
+	return gcm.Seal(nil, nonce, plaintext, associatedData), nil
+}
+
 // ChaChaAEAD implements AEAD using ChaCha20-Poly1305.
 type ChaChaAEAD struct {
 	rand io.Reader
@@ -191,4 +210,19 @@ func ChaChaDecrypt(key, ciphertext, nonce, associatedData []byte) ([]byte, error
 	c := NewChaChaAEAD(nil)
 	combined := append(bytes.Clone(nonce), ciphertext...)
 	return c.Decrypt(key, combined, associatedData)
+}
+
+// ChaChaEncryptWithNonce encrypts using ChaCha20-Poly1305 with a caller-provided nonce.
+func ChaChaEncryptWithNonce(key, plaintext, nonce, associatedData []byte) ([]byte, error) {
+	if len(key) != chacha20poly1305.KeySize {
+		return nil, ErrInvalidKey
+	}
+	if len(nonce) != chacha20poly1305.NonceSize {
+		return nil, ErrCiphertextTooShort
+	}
+	aead, err := chacha20poly1305.New(key)
+	if err != nil {
+		return nil, fmt.Errorf("chacha20poly1305: %w", err)
+	}
+	return aead.Seal(nil, nonce, plaintext, associatedData), nil
 }

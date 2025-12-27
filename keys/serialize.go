@@ -121,6 +121,12 @@ func (b *PreKeyBundle) Serialize() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if (b.KyberPreKeyID == nil) != (len(b.KyberPreKeyPublic) == 0) {
+		return nil, fmt.Errorf("bundle: kyber pre-key id/key mismatch")
+	}
+	if (b.KyberPreKeyID == nil) != (len(b.KyberPreKeySignature) == 0) {
+		return nil, fmt.Errorf("bundle: kyber pre-key id/signature mismatch")
+	}
 	hasPreKey := byte(0)
 	preKeyLen := 0
 	if b.PreKeyID != nil && b.PreKeyPublic != nil {
@@ -128,7 +134,13 @@ func (b *PreKeyBundle) Serialize() ([]byte, error) {
 		preKeyLen = 4 + 32
 	}
 	sigLen := len(b.SignedPreKeySignature)
-	out := make([]byte, 1+4+4+1+preKeyLen+4+32+2+sigLen+len(identityBytes))
+	kyberLen := 0
+	hasKyber := byte(0)
+	if b.KyberPreKeyID != nil && len(b.KyberPreKeyPublic) > 0 && len(b.KyberPreKeySignature) > 0 {
+		hasKyber = 1
+		kyberLen = 1 + 4 + 2 + len(b.KyberPreKeyPublic) + 2 + len(b.KyberPreKeySignature)
+	}
+	out := make([]byte, 1+4+4+1+preKeyLen+4+32+2+sigLen+len(identityBytes)+kyberLen)
 	pos := 0
 	out[pos] = serializeVersion
 	pos++
@@ -153,6 +165,20 @@ func (b *PreKeyBundle) Serialize() ([]byte, error) {
 	copy(out[pos:pos+sigLen], b.SignedPreKeySignature)
 	pos += sigLen
 	copy(out[pos:], identityBytes)
+	pos += len(identityBytes)
+	if hasKyber == 1 {
+		out[pos] = hasKyber
+		pos++
+		binary.BigEndian.PutUint32(out[pos:pos+4], *b.KyberPreKeyID)
+		pos += 4
+		binary.BigEndian.PutUint16(out[pos:pos+2], uint16(len(b.KyberPreKeyPublic)))
+		pos += 2
+		copy(out[pos:pos+len(b.KyberPreKeyPublic)], b.KyberPreKeyPublic)
+		pos += len(b.KyberPreKeyPublic)
+		binary.BigEndian.PutUint16(out[pos:pos+2], uint16(len(b.KyberPreKeySignature)))
+		pos += 2
+		copy(out[pos:pos+len(b.KyberPreKeySignature)], b.KyberPreKeySignature)
+	}
 	return out, nil
 }
 
@@ -208,9 +234,56 @@ func DeserializePreKeyBundle(data []byte) (*PreKeyBundle, error) {
 	copy(sig, data[pos:pos+sigLen])
 	pos += sigLen
 
-	identity, err := DeserializeIdentityKey(data[pos:])
+	const identitySize = 1 + 32 + 32
+	if pos+identitySize > len(data) {
+		return nil, fmt.Errorf("bundle: truncated identity key")
+	}
+	identity, err := DeserializeIdentityKey(data[pos : pos+identitySize])
 	if err != nil {
 		return nil, fmt.Errorf("bundle: %w", err)
+	}
+	pos += identitySize
+
+	var kyberID *uint32
+	var kyberPub []byte
+	var kyberSig []byte
+	if pos < len(data) {
+		if pos+1 > len(data) {
+			return nil, fmt.Errorf("bundle: truncated kyber flag")
+		}
+		hasKyber := data[pos]
+		pos++
+		if hasKyber == 1 {
+			if pos+4+2 > len(data) {
+				return nil, fmt.Errorf("bundle: truncated kyber header")
+			}
+			id := binary.BigEndian.Uint32(data[pos : pos+4])
+			pos += 4
+			pubLen := int(binary.BigEndian.Uint16(data[pos : pos+2]))
+			pos += 2
+			if pubLen <= 0 || pos+pubLen > len(data) {
+				return nil, fmt.Errorf("bundle: truncated kyber public key")
+			}
+			kyberPub = append([]byte(nil), data[pos:pos+pubLen]...)
+			pos += pubLen
+			if pos+2 > len(data) {
+				return nil, fmt.Errorf("bundle: truncated kyber signature length")
+			}
+			sigLen := int(binary.BigEndian.Uint16(data[pos : pos+2]))
+			pos += 2
+			if sigLen <= 0 || pos+sigLen > len(data) {
+				return nil, fmt.Errorf("bundle: truncated kyber signature")
+			}
+			kyberSig = append([]byte(nil), data[pos:pos+sigLen]...)
+			pos += sigLen
+			kyberID = &id
+		} else if hasKyber != 0 {
+			return nil, fmt.Errorf("bundle: invalid kyber flag")
+		}
+	}
+
+	if pos != len(data) {
+		return nil, fmt.Errorf("bundle: trailing data")
 	}
 
 	return &PreKeyBundle{
@@ -221,6 +294,9 @@ func DeserializePreKeyBundle(data []byte) (*PreKeyBundle, error) {
 		SignedPreKeyID:        signedID,
 		SignedPreKeyPublic:    signedPub,
 		SignedPreKeySignature: sig,
+		KyberPreKeyID:         kyberID,
+		KyberPreKeyPublic:     kyberPub,
+		KyberPreKeySignature:  kyberSig,
 		IdentityKey:           *identity,
 	}, nil
 }

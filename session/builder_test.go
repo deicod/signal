@@ -3,6 +3,7 @@ package session
 import (
 	"testing"
 
+	signalerrors "github.com/deicod/signal/errors"
 	"github.com/deicod/signal/keys"
 	"github.com/deicod/signal/store"
 	"github.com/deicod/signal/store/memory"
@@ -14,8 +15,9 @@ func TestProcessPreKeyBundleCreatesSession(t *testing.T) {
 	bobID, _ := keys.GenerateIdentityKeyPair()
 	signed, _ := keys.GenerateSignedPreKey(bobID, 5)
 	pre, _ := keys.GeneratePreKey(7)
+	kyber, _ := keys.GenerateKyberPreKey(bobID, 9)
 
-	bundle, err := keys.NewPreKeyBundle(1, 1, pre, signed, bobID.PublicKey)
+	bundle, err := keys.NewPreKeyBundleWithKyber(1, 1, pre, signed, kyber, bobID.PublicKey)
 	require.NoError(t, err)
 
 	storeAlice := memory.NewStore(aliceID, 1)
@@ -38,8 +40,9 @@ func TestProcessPreKeyBundleRejectsUntrusted(t *testing.T) {
 	bobID, _ := keys.GenerateIdentityKeyPair()
 	otherID, _ := keys.GenerateIdentityKeyPair()
 	signed, _ := keys.GenerateSignedPreKey(bobID, 5)
+	kyber, _ := keys.GenerateKyberPreKey(bobID, 9)
 
-	bundle, err := keys.NewPreKeyBundle(1, 1, nil, signed, bobID.PublicKey)
+	bundle, err := keys.NewPreKeyBundleWithKyber(1, 1, nil, signed, kyber, bobID.PublicKey)
 	require.NoError(t, err)
 
 	storeAlice := memory.NewStore(aliceID, 1)
@@ -48,7 +51,7 @@ func TestProcessPreKeyBundleRejectsUntrusted(t *testing.T) {
 
 	builder := NewBuilder(storeAlice, addr)
 	session, msg, err := builder.ProcessPreKeyBundle(bundle)
-	require.Error(t, err)
+	require.ErrorIs(t, err, signalerrors.ErrUntrustedIdentity)
 	require.Nil(t, session)
 	require.Nil(t, msg)
 }
@@ -58,8 +61,9 @@ func TestProcessPreKeyMessageCreatesSession(t *testing.T) {
 	bobID, _ := keys.GenerateIdentityKeyPair()
 	signed, _ := keys.GenerateSignedPreKey(bobID, 5)
 	pre, _ := keys.GeneratePreKey(7)
+	kyber, _ := keys.GenerateKyberPreKey(bobID, 9)
 
-	bundle, err := keys.NewPreKeyBundle(1, 1, pre, signed, bobID.PublicKey)
+	bundle, err := keys.NewPreKeyBundleWithKyber(1, 1, pre, signed, kyber, bobID.PublicKey)
 	require.NoError(t, err)
 
 	// Alice builds initial message.
@@ -73,6 +77,7 @@ func TestProcessPreKeyMessageCreatesSession(t *testing.T) {
 	// Bob processes incoming message.
 	storeBob := memory.NewStore(bobID, 2)
 	require.NoError(t, storeBob.StoreSignedPreKey(signed.ID, signed))
+	require.NoError(t, storeBob.StoreKyberPreKey(kyber.ID, kyber))
 	if pre != nil {
 		require.NoError(t, storeBob.StorePreKey(pre.ID, pre))
 	}
@@ -95,8 +100,9 @@ func TestProcessPreKeyMessageRejectsUntrusted(t *testing.T) {
 	otherID, _ := keys.GenerateIdentityKeyPair()
 	signed, _ := keys.GenerateSignedPreKey(bobID, 5)
 	pre, _ := keys.GeneratePreKey(7)
+	kyber, _ := keys.GenerateKyberPreKey(bobID, 9)
 
-	bundle, err := keys.NewPreKeyBundle(1, 1, pre, signed, bobID.PublicKey)
+	bundle, err := keys.NewPreKeyBundleWithKyber(1, 1, pre, signed, kyber, bobID.PublicKey)
 	require.NoError(t, err)
 
 	storeAlice := memory.NewStore(aliceID, 1)
@@ -106,6 +112,7 @@ func TestProcessPreKeyMessageRejectsUntrusted(t *testing.T) {
 
 	storeBob := memory.NewStore(bobID, 2)
 	require.NoError(t, storeBob.StoreSignedPreKey(signed.ID, signed))
+	require.NoError(t, storeBob.StoreKyberPreKey(kyber.ID, kyber))
 	if pre != nil {
 		require.NoError(t, storeBob.StorePreKey(pre.ID, pre))
 	}
@@ -115,7 +122,7 @@ func TestProcessPreKeyMessageRejectsUntrusted(t *testing.T) {
 
 	respBuilder := NewBuilder(storeBob, addrAlice)
 	session, ad, err := respBuilder.ProcessPreKeyMessage(initMsg)
-	require.Error(t, err)
+	require.ErrorIs(t, err, signalerrors.ErrUntrustedIdentity)
 	require.Nil(t, session)
 	require.Nil(t, ad)
 }

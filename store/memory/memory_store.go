@@ -1,6 +1,8 @@
 package memory
 
 import (
+	"bytes"
+	"crypto/subtle"
 	"sync"
 
 	"github.com/deicod/signal/keys"
@@ -17,7 +19,10 @@ type Store struct {
 	identities map[store.Address]*keys.IdentityKey
 	preKeys    map[uint32]*keys.PreKey
 	signedKeys map[uint32]*keys.SignedPreKey
+	kyberKeys  map[uint32]*keys.KyberPreKey
 	sessions   map[store.Address]*store.SessionRecord
+	senderKeys map[store.SenderKeyName]*store.SenderKeyRecord
+	sesame     *store.SesameRecord
 }
 
 // NewStore initializes an empty in-memory store.
@@ -28,7 +33,10 @@ func NewStore(identity *keys.IdentityKeyPair, registrationID uint32) *Store {
 		identities:          make(map[store.Address]*keys.IdentityKey),
 		preKeys:             make(map[uint32]*keys.PreKey),
 		signedKeys:          make(map[uint32]*keys.SignedPreKey),
+		kyberKeys:           make(map[uint32]*keys.KyberPreKey),
 		sessions:            make(map[store.Address]*store.SessionRecord),
+		senderKeys:          make(map[store.SenderKeyName]*store.SenderKeyRecord),
+		sesame:              nil,
 	}
 }
 
@@ -50,7 +58,17 @@ func (m *Store) GetLocalRegistrationID() (uint32, error) {
 func (m *Store) SaveIdentity(addr store.Address, identityKey *keys.IdentityKey) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.identities[addr] = identityKey
+	if identityKey == nil {
+		delete(m.identities, addr)
+		return nil
+	}
+	clone := *identityKey
+	if isZeroKey32(clone.SigningPublic) {
+		if existing := m.identities[addr]; existing != nil && !isZeroKey32(existing.SigningPublic) {
+			clone.SigningPublic = existing.SigningPublic
+		}
+	}
+	m.identities[addr] = &clone
 	return nil
 }
 
@@ -62,7 +80,15 @@ func (m *Store) IsTrustedIdentity(addr store.Address, identityKey *keys.Identity
 	if !ok {
 		return true // First seen, accept by default.
 	}
-	return existing.SigningPublic == identityKey.SigningPublic && existing.PublicKey == identityKey.PublicKey
+	if existing == nil || identityKey == nil {
+		return false
+	}
+	dhOK := subtle.ConstantTimeCompare(existing.PublicKey[:], identityKey.PublicKey[:]) == 1
+	if isZeroKey32(existing.SigningPublic) || isZeroKey32(identityKey.SigningPublic) {
+		return dhOK
+	}
+	signingOK := subtle.ConstantTimeCompare(existing.SigningPublic[:], identityKey.SigningPublic[:]) == 1
+	return signingOK && dhOK
 }
 
 // GetIdentity retrieves a stored identity for a remote address.
@@ -73,7 +99,20 @@ func (m *Store) GetIdentity(addr store.Address) (*keys.IdentityKey, error) {
 	if !ok {
 		return nil, nil
 	}
-	return id, nil
+	if id == nil {
+		return nil, nil
+	}
+	clone := *id
+	return &clone, nil
+}
+
+func isZeroKey32(key [32]byte) bool {
+	for _, b := range key {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // LoadPreKey returns a pre-key by ID.
@@ -146,6 +185,41 @@ func (m *Store) RemoveSignedPreKey(id uint32) error {
 	return nil
 }
 
+// LoadKyberPreKey returns a Kyber pre-key by ID.
+func (m *Store) LoadKyberPreKey(id uint32) (*keys.KyberPreKey, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	pk, ok := m.kyberKeys[id]
+	if !ok {
+		return nil, nil
+	}
+	return pk, nil
+}
+
+// StoreKyberPreKey saves a Kyber pre-key by ID.
+func (m *Store) StoreKyberPreKey(id uint32, kyberPreKey *keys.KyberPreKey) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.kyberKeys[id] = kyberPreKey
+	return nil
+}
+
+// ContainsKyberPreKey returns true if a Kyber pre-key exists.
+func (m *Store) ContainsKyberPreKey(id uint32) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	_, ok := m.kyberKeys[id]
+	return ok
+}
+
+// RemoveKyberPreKey deletes a Kyber pre-key by ID.
+func (m *Store) RemoveKyberPreKey(id uint32) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.kyberKeys, id)
+	return nil
+}
+
 // LoadSession returns a session record for the given address.
 func (m *Store) LoadSession(addr store.Address) (*store.SessionRecord, error) {
 	m.mu.RLock()
@@ -154,14 +228,23 @@ func (m *Store) LoadSession(addr store.Address) (*store.SessionRecord, error) {
 	if !ok {
 		return nil, nil
 	}
-	return rec, nil
+	if rec == nil {
+		return nil, nil
+	}
+	return &store.SessionRecord{
+		Data: bytes.Clone(rec.Data),
+	}, nil
 }
 
 // StoreSession saves a session record.
 func (m *Store) StoreSession(addr store.Address, record *store.SessionRecord) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.sessions[addr] = record
+	if record == nil {
+		delete(m.sessions, addr)
+		return nil
+	}
+	m.sessions[addr] = &store.SessionRecord{Data: bytes.Clone(record.Data)}
 	return nil
 }
 
@@ -190,5 +273,93 @@ func (m *Store) DeleteAllSessions(name string) error {
 			delete(m.sessions, addr)
 		}
 	}
+	return nil
+}
+
+// LoadSenderKey returns a sender key record for the given name.
+func (m *Store) LoadSenderKey(name store.SenderKeyName) (*store.SenderKeyRecord, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	rec, ok := m.senderKeys[name]
+	if !ok {
+		return nil, nil
+	}
+	if rec == nil {
+		return nil, nil
+	}
+	return &store.SenderKeyRecord{
+		Data: bytes.Clone(rec.Data),
+	}, nil
+}
+
+// StoreSenderKey saves a sender key record.
+func (m *Store) StoreSenderKey(name store.SenderKeyName, record *store.SenderKeyRecord) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if record == nil {
+		delete(m.senderKeys, name)
+		return nil
+	}
+	m.senderKeys[name] = &store.SenderKeyRecord{Data: bytes.Clone(record.Data)}
+	return nil
+}
+
+// ContainsSenderKey returns true if a sender key record exists.
+func (m *Store) ContainsSenderKey(name store.SenderKeyName) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	_, ok := m.senderKeys[name]
+	return ok
+}
+
+// DeleteSenderKey removes a sender key record.
+func (m *Store) DeleteSenderKey(name store.SenderKeyName) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.senderKeys, name)
+	return nil
+}
+
+// DeleteAllSenderKeys removes all sender key records for a group.
+func (m *Store) DeleteAllSenderKeys(group string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for name := range m.senderKeys {
+		if name.Group == group {
+			delete(m.senderKeys, name)
+		}
+	}
+	return nil
+}
+
+// LoadSesameState returns the stored Sesame roster state.
+func (m *Store) LoadSesameState() (*store.SesameRecord, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.sesame == nil {
+		return nil, nil
+	}
+	return &store.SesameRecord{
+		Data: bytes.Clone(m.sesame.Data),
+	}, nil
+}
+
+// StoreSesameState saves the Sesame roster state.
+func (m *Store) StoreSesameState(record *store.SesameRecord) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if record == nil {
+		m.sesame = nil
+		return nil
+	}
+	m.sesame = &store.SesameRecord{Data: bytes.Clone(record.Data)}
+	return nil
+}
+
+// DeleteSesameState removes the stored Sesame roster state.
+func (m *Store) DeleteSesameState() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.sesame = nil
 	return nil
 }
