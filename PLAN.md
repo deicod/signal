@@ -1,8 +1,8 @@
 # Wire-Compatible Signal Protocol Plan
 
 This plan focuses on making the library wire-compatible with Signal/libsignal clients while
-preserving existing internal APIs where feasible. Every task is unchecked and intended to be
-crossed off when complete.
+preserving existing internal APIs where feasible. All tasks below are completed and kept
+checked for historical tracking.
 
 Reference target (to lock): https://github.com/signalapp/libsignal commit `cfaf27f3a2d743e776ef553a770295d7e751277d`.
 
@@ -93,11 +93,11 @@ Reference target (to lock): https://github.com/signalapp/libsignal commit `cfaf2
 ## 8. Storage and Security Hardening
 - [x] Add store requirements for signed pre-key expiry and session limits.
 - [x] Enforce public key validation everywhere inputs enter the protocol.
-- [ ] Expand key zeroization beyond X3DH (ratchet, sender keys, session teardown).
-- [ ] Review constant-time comparisons in all authentication paths.
+- [x] Expand key zeroization beyond X3DH (ratchet, sender keys, session teardown).
+- [x] Review constant-time comparisons in all authentication paths.
 
 ## 9. Test Vectors and Interop Harness
-- [ ] Add official vectors for X3DH, Double Ratchet, and sender keys in `testing/vectors/`.
+- [x] Add official vectors for X3DH, Double Ratchet, and sender keys in `testing/vectors/`.
 - [x] Add deterministic X3DH/ratchet vector files for the current implementation.
 - [x] Implement a vector runner to validate serialization and cryptographic outputs.
 - [x] Add cross-implementation fixtures (generated from libsignal) where possible.
@@ -105,6 +105,6 @@ Reference target (to lock): https://github.com/signalapp/libsignal commit `cfaf2
 - [x] Add fuzzing for wire deserialization and message processing.
 
 ## 10. Docs and Migration
-- [ ] Update README and GoDoc to state wire compatibility and supported versions.
-- [ ] Document any breaking API changes and migration guidance from the internal envelope.
-- [ ] Add protocol compatibility notes and security considerations.
+- [x] Update README and GoDoc to state wire compatibility and supported versions.
+- [x] Document any breaking API changes and migration guidance from the internal envelope.
+- [x] Add protocol compatibility notes and security considerations.

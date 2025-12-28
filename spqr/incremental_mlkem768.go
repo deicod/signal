@@ -1,7 +1,7 @@
 package spqr
 
 import (
-	"bytes"
+	"crypto/subtle"
 	"fmt"
 
 	"golang.org/x/crypto/sha3"
@@ -61,7 +61,7 @@ func mlkemEKMatchesHeader(ek []byte, hdr []byte) bool {
 	copy(pkBytes, ek)
 	copy(pkBytes[mlkemEncapsulationKeySize:], hdr[:32])
 	pkHash := sha3.Sum256(pkBytes)
-	if !bytes.Equal(pkHash[:], hdr[32:]) {
+	if subtle.ConstantTimeCompare(pkHash[:], hdr[32:]) != 1 {
 		return false
 	}
 	var pk kyber768.PublicKey

@@ -50,6 +50,7 @@ func (c *Cipher) Encrypt(plaintext []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer zeroSenderMessageKey(&messageKey)
 
 	ciphertext, err := signalcrypto.AESCBCEncrypt(messageKey.cipherKey[:], messageKey.iv[:], plaintext)
 	if err != nil {
@@ -123,6 +124,7 @@ func (c *Cipher) Decrypt(ciphertext []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer zeroSenderMessageKey(&messageKey)
 
 	plaintext, err := signalcrypto.AESCBCDecrypt(messageKey.cipherKey[:], messageKey.iv[:], msg.ciphertext)
 	if err != nil {

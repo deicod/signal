@@ -16,6 +16,7 @@ import (
 )
 
 type ratchetVectorFile struct {
+	Name                string             `json:"name"`
 	X3DH                ratchetX3DHInput   `json:"x3dh"`
 	AssociatedData      string             `json:"associated_data"`
 	InitiatorMessages   []ratchetVectorMsg `json:"initiator_messages"`
@@ -29,6 +30,7 @@ type ratchetX3DHInput struct {
 	Responder            x3dhResponderInput `json:"responder"`
 	ResponderSendPrivate string             `json:"responder_send_private"`
 	SharedSecret         string             `json:"shared_secret"`
+	KyberCiphertext      string             `json:"kyber_ciphertext"`
 }
 
 type ratchetVectorMsg struct {
@@ -38,92 +40,136 @@ type ratchetVectorMsg struct {
 }
 
 func TestRatchetVectors(t *testing.T) {
-	vec := loadRatchetVectors(t)
+	files := []string{"ratchet.json", "ratchet_libsignal.json"}
+	for _, filename := range files {
+		t.Run(filename, func(t *testing.T) {
+			vec := loadRatchetVectors(t, filename)
 
-	initID := identityFromPrivateHex(t, vec.X3DH.Initiator.IdentityPrivate)
-	respID := identityFromPrivateHex(t, vec.X3DH.Responder.IdentityPrivate)
-	initEph := keyPairFromPrivateHex(t, vec.X3DH.Initiator.EphemeralPrivate)
+			initID := identityFromPrivateHex(t, vec.X3DH.Initiator.IdentityPrivate)
+			respID := identityFromPrivateHex(t, vec.X3DH.Responder.IdentityPrivate)
+			initEph := keyPairFromPrivateHex(t, vec.X3DH.Initiator.EphemeralPrivate)
 
-	signedKP := keyPairFromPrivateHex(t, vec.X3DH.Responder.SignedPreKeyPrivate)
-	signedSig := mustHexBytes(t, vec.X3DH.Responder.SignedPreKeySignature)
-	signedPreKey := &keys.SignedPreKey{
-		ID:        vec.X3DH.Responder.SignedPreKeyID,
-		KeyPair:   signedKP,
-		Signature: signedSig,
-	}
+			signedKP := keyPairFromPrivateHex(t, vec.X3DH.Responder.SignedPreKeyPrivate)
+			signedSig := mustHexBytes(t, vec.X3DH.Responder.SignedPreKeySignature)
+			signedPreKey := &keys.SignedPreKey{
+				ID:        vec.X3DH.Responder.SignedPreKeyID,
+				KeyPair:   signedKP,
+				Signature: signedSig,
+			}
 
-	preKP := keyPairFromPrivateHex(t, vec.X3DH.Responder.PreKeyPrivate)
-	preKey := &keys.PreKey{ID: *vec.X3DH.Responder.PreKeyID, KeyPair: preKP}
+			var preKey *keys.PreKey
+			if vec.X3DH.Responder.PreKeyID != nil {
+				preKP := keyPairFromPrivateHex(t, vec.X3DH.Responder.PreKeyPrivate)
+				preKey = &keys.PreKey{ID: *vec.X3DH.Responder.PreKeyID, KeyPair: preKP}
+			}
 
-	bundle, err := keys.NewPreKeyBundle(99, 1, preKey, signedPreKey, respID.PublicKey)
-	require.NoError(t, err)
+			var kyberPreKey *keys.KyberPreKey
+			if vec.X3DH.Responder.KyberPreKeyID != nil {
+				kyberPreKey = &keys.KyberPreKey{
+					ID: *vec.X3DH.Responder.KyberPreKeyID,
+					KeyPair: &keys.KyberKeyPair{
+						PublicKey:  mustHexBytes(t, vec.X3DH.Responder.KyberPublic),
+						PrivateKey: mustHexBytes(t, vec.X3DH.Responder.KyberPrivate),
+					},
+					Signature: mustHexBytes(t, vec.X3DH.Responder.KyberSignature),
+				}
+			}
 
-	initiator := x3dh.NewInitiatorWithGenerator(initID, func() (*signalcrypto.KeyPair, error) {
-		return initEph, nil
-	})
-	initRes, err := initiator.ProcessPreKeyBundle(bundle)
-	require.NoError(t, err)
-	require.Equal(t, mustHex32Vec(t, vec.X3DH.SharedSecret), initRes.SharedSecret)
+			var bundle *keys.PreKeyBundle
+			var err error
+			if kyberPreKey != nil {
+				bundle, err = keys.NewPreKeyBundleWithKyber(99, 1, preKey, signedPreKey, kyberPreKey, respID.PublicKey)
+			} else {
+				bundle, err = keys.NewPreKeyBundle(99, 1, preKey, signedPreKey, respID.PublicKey)
+			}
+			require.NoError(t, err)
 
-	store := memory.NewStore(respID, 99)
-	require.NoError(t, store.StorePreKey(preKey.ID, preKey))
+			var encapsulate func(publicKey []byte) ([]byte, []byte, error)
+			if vec.X3DH.Responder.KyberPreKeyID != nil {
+				require.NotEmpty(t, vec.X3DH.KyberCiphertext)
+				kyberCT := mustHexBytes(t, vec.X3DH.KyberCiphertext)
+				kyberSS, err := signalcrypto.Kyber1024Decapsulate(mustHexBytes(t, vec.X3DH.Responder.KyberPrivate), kyberCT)
+				require.NoError(t, err)
+				encapsulate = func(publicKey []byte) ([]byte, []byte, error) {
+					ss := append([]byte(nil), kyberSS...)
+					ct := append([]byte(nil), kyberCT...)
+					return ss, ct, nil
+				}
+			}
 
-	responder := x3dh.NewResponder(respID, signedPreKey, store, store)
-	respRes, err := responder.ProcessInitialMessage(&initRes.InitialMessage)
-	require.NoError(t, err)
+			initiator := x3dh.NewInitiatorWithGenerators(initID, func() (*signalcrypto.KeyPair, error) {
+				return initEph, nil
+			}, encapsulate)
+			initRes, err := initiator.ProcessPreKeyBundle(bundle)
+			require.NoError(t, err)
+			require.Equal(t, mustHex32Vec(t, vec.X3DH.SharedSecret), initRes.SharedSecret)
 
-	sendDH := keyPairFromPrivateHex(t, vec.X3DH.ResponderSendPrivate)
-	gen := func() (*signalcrypto.KeyPair, error) {
-		kp := *sendDH
-		return &kp, nil
-	}
+			store := memory.NewStore(respID, 99)
+			if preKey != nil {
+				require.NoError(t, store.StorePreKey(preKey.ID, preKey))
+			}
+			if kyberPreKey != nil {
+				require.NoError(t, store.StoreKyberPreKey(kyberPreKey.ID, kyberPreKey))
+			}
 
-	initState, err := InitializeStateWithGenerator(initRes, true, gen)
-	require.NoError(t, err)
-	respState, err := InitializeStateWithGenerator(respRes, false, gen)
-	require.NoError(t, err)
+			responder := x3dh.NewResponder(respID, signedPreKey, store, store)
+			respRes, err := responder.ProcessInitialMessage(&initRes.InitialMessage)
+			require.NoError(t, err)
 
-	ad := mustHexBytes(t, vec.AssociatedData)
-	require.Equal(t, ad, initRes.AssociatedData)
-	require.Equal(t, ad, respRes.AssociatedData)
+			sendDH := keyPairFromPrivateHex(t, vec.X3DH.ResponderSendPrivate)
+			gen := func() (*signalcrypto.KeyPair, error) {
+				kp := *sendDH
+				return &kp, nil
+			}
 
-	initSend := initState.Clone()
-	initRecv := initState.Clone()
-	respSend := respState.Clone()
-	respRecv := respState.Clone()
+			initState, err := InitializeStateWithGenerator(initRes, true, gen)
+			require.NoError(t, err)
+			respState, err := InitializeStateWithGenerator(respRes, false, gen)
+			require.NoError(t, err)
 
-	for i, msg := range vec.InitiatorMessages {
-		pt := mustHexBytes(t, msg.Plaintext)
-		enc, err := initSend.Encrypt(pt, ad)
-		require.NoError(t, err)
-		require.Equal(t, mustHexBytes(t, msg.Header), enc.Header.Serialize(), "initiator message %d header", i)
-		require.Equal(t, mustHexBytes(t, msg.Ciphertext), enc.Ciphertext, "initiator message %d ciphertext", i)
-	}
+			ad := mustHexBytes(t, vec.AssociatedData)
+			require.Equal(t, ad, initRes.AssociatedData)
+			require.Equal(t, ad, respRes.AssociatedData)
 
-	for i, msg := range vec.ResponderMessages {
-		pt := mustHexBytes(t, msg.Plaintext)
-		enc, err := respSend.Encrypt(pt, ad)
-		require.NoError(t, err)
-		require.Equal(t, mustHexBytes(t, msg.Header), enc.Header.Serialize(), "responder message %d header", i)
-		require.Equal(t, mustHexBytes(t, msg.Ciphertext), enc.Ciphertext, "responder message %d ciphertext", i)
-	}
+			initSend := initState.Clone()
+			initRecv := initState.Clone()
+			respSend := respState.Clone()
+			respRecv := respState.Clone()
 
-	for _, idx := range vec.DeliveryToResponder {
-		msg := vec.InitiatorMessages[idx]
-		plain := decryptVectorMessage(t, respRecv, ad, msg)
-		require.Equal(t, mustHexBytes(t, msg.Plaintext), plain)
-	}
+			for i, msg := range vec.InitiatorMessages {
+				pt := mustHexBytes(t, msg.Plaintext)
+				enc, err := initSend.Encrypt(pt, ad)
+				require.NoError(t, err)
+				require.Equal(t, mustHexBytes(t, msg.Header), enc.Header.Serialize(), "initiator message %d header", i)
+				require.Equal(t, mustHexBytes(t, msg.Ciphertext), enc.Ciphertext, "initiator message %d ciphertext", i)
+			}
 
-	for _, idx := range vec.DeliveryToInitiator {
-		msg := vec.ResponderMessages[idx]
-		plain := decryptVectorMessage(t, initRecv, ad, msg)
-		require.Equal(t, mustHexBytes(t, msg.Plaintext), plain)
+			for i, msg := range vec.ResponderMessages {
+				pt := mustHexBytes(t, msg.Plaintext)
+				enc, err := respSend.Encrypt(pt, ad)
+				require.NoError(t, err)
+				require.Equal(t, mustHexBytes(t, msg.Header), enc.Header.Serialize(), "responder message %d header", i)
+				require.Equal(t, mustHexBytes(t, msg.Ciphertext), enc.Ciphertext, "responder message %d ciphertext", i)
+			}
+
+			for _, idx := range vec.DeliveryToResponder {
+				msg := vec.InitiatorMessages[idx]
+				plain := decryptVectorMessage(t, respRecv, ad, msg)
+				require.Equal(t, mustHexBytes(t, msg.Plaintext), plain)
+			}
+
+			for _, idx := range vec.DeliveryToInitiator {
+				msg := vec.ResponderMessages[idx]
+				plain := decryptVectorMessage(t, initRecv, ad, msg)
+				require.Equal(t, mustHexBytes(t, msg.Plaintext), plain)
+			}
+		})
 	}
 }
 
-func loadRatchetVectors(t *testing.T) ratchetVectorFile {
+func loadRatchetVectors(t *testing.T, filename string) ratchetVectorFile {
 	t.Helper()
-	path := filepath.Join("..", "testing", "vectors", "ratchet.json")
+	path := filepath.Join("..", "testing", "vectors", filename)
 	raw, err := os.ReadFile(path)
 	require.NoError(t, err)
 
@@ -158,6 +204,10 @@ type x3dhResponderInput struct {
 	SignedPreKeySignature string  `json:"signed_pre_key_signature"`
 	PreKeyID              *uint32 `json:"pre_key_id"`
 	PreKeyPrivate         string  `json:"pre_key_private"`
+	KyberPreKeyID         *uint32 `json:"kyber_pre_key_id"`
+	KyberPublic           string  `json:"kyber_public"`
+	KyberPrivate          string  `json:"kyber_private"`
+	KyberSignature        string  `json:"kyber_signature"`
 }
 
 func keyPairFromPrivateHex(t *testing.T, hexStr string) *signalcrypto.KeyPair {

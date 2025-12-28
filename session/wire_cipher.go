@@ -153,6 +153,11 @@ func (c *WireCipher) encryptSignalMessage(session *Session, plaintext []byte) (*
 	}
 
 	encKey, macKey, iv := ratchet.DeriveMessageKeysWithSalt(mk, salt)
+	signalcrypto.ZeroBytes(mk[:])
+	signalcrypto.ZeroBytes(salt)
+	defer signalcrypto.ZeroBytes(encKey)
+	defer signalcrypto.ZeroBytes(macKey)
+	defer signalcrypto.ZeroBytes(iv)
 	ciphertext, err := signalcrypto.AESCBCEncrypt(encKey, iv, plaintext)
 	if err != nil {
 		return nil, fmt.Errorf("encrypt: %w", err)
@@ -267,6 +272,11 @@ func decryptSignalWithSession(session *Session, msg *wire.SignalMessage) ([]byte
 	}
 
 	encKey, macKey, iv := ratchet.DeriveMessageKeysWithSalt(*mk, salt)
+	signalcrypto.ZeroBytes(salt)
+	defer signalcrypto.ZeroKey(mk)
+	defer signalcrypto.ZeroBytes(encKey)
+	defer signalcrypto.ZeroBytes(macKey)
+	defer signalcrypto.ZeroBytes(iv)
 	ok, err := msg.VerifyMAC(*session.remoteIdentity, *session.localIdentity, macKey)
 	if err != nil {
 		return nil, err

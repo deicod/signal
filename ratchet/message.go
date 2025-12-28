@@ -40,7 +40,11 @@ func (s *State) Encrypt(plaintext, associatedData []byte) (*Message, error) {
 	s.CKs = newCKs
 	s.Ns++
 
-	encKey, _, iv := DeriveMessageKeys(mk)
+	encKey, authKey, iv := DeriveMessageKeys(mk)
+	signalcrypto.ZeroBytes(mk[:])
+	defer signalcrypto.ZeroBytes(encKey)
+	defer signalcrypto.ZeroBytes(authKey)
+	defer signalcrypto.ZeroBytes(iv)
 	nonce := iv[:12]
 	ad := messageAD(associatedData, &header)
 
@@ -126,7 +130,11 @@ func messageAD(associatedData []byte, header *Header) []byte {
 }
 
 func decryptWithMessageKey(mk *[32]byte, msg *Message, associatedData []byte) ([]byte, error) {
-	encKey, _, _ := DeriveMessageKeys(*mk)
+	encKey, authKey, iv := DeriveMessageKeys(*mk)
+	defer signalcrypto.ZeroKey(mk)
+	defer signalcrypto.ZeroBytes(encKey)
+	defer signalcrypto.ZeroBytes(authKey)
+	defer signalcrypto.ZeroBytes(iv)
 	if len(msg.Ciphertext) < 12 {
 		return nil, fmt.Errorf("%w: decrypt ciphertext too short", signalerrors.ErrInvalidMessage)
 	}

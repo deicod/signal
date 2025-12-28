@@ -1,7 +1,6 @@
 package x3dh
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"os"
@@ -55,95 +54,102 @@ type x3dhExpectedOutput struct {
 }
 
 func TestX3DHVectors(t *testing.T) {
-	vec := loadX3DHVectors(t)
+	files := []string{"x3dh.json", "x3dh_libsignal.json"}
+	for _, filename := range files {
+		vec := loadX3DHVectors(t, filename)
+		for _, tc := range vec.Cases {
+			t.Run(filename+"-"+tc.Name, func(t *testing.T) {
+				initID := identityFromPrivateHex(t, tc.Initiator.IdentityPrivate)
+				respID := identityFromPrivateHex(t, tc.Responder.IdentityPrivate)
+				initEph := keyPairFromPrivateHex(t, tc.Initiator.EphemeralPrivate)
 
-	for _, tc := range vec.Cases {
-		t.Run(tc.Name, func(t *testing.T) {
-			initID := identityFromPrivateHex(t, tc.Initiator.IdentityPrivate)
-			respID := identityFromPrivateHex(t, tc.Responder.IdentityPrivate)
-			initEph := keyPairFromPrivateHex(t, tc.Initiator.EphemeralPrivate)
-
-			signedKP := keyPairFromPrivateHex(t, tc.Responder.SignedPreKeyPrivate)
-			signedSig := mustHexBytes(t, tc.Responder.SignedPreKeySignature)
-			signedPreKey := &keys.SignedPreKey{
-				ID:        tc.Responder.SignedPreKeyID,
-				KeyPair:   signedKP,
-				Signature: signedSig,
-			}
-
-			var preKey *keys.PreKey
-			if tc.Responder.PreKeyID != nil {
-				preKP := keyPairFromPrivateHex(t, tc.Responder.PreKeyPrivate)
-				preKey = &keys.PreKey{ID: *tc.Responder.PreKeyID, KeyPair: preKP}
-			}
-
-			var kyberPreKey *keys.KyberPreKey
-			if tc.Responder.KyberPreKeyID != nil {
-				kyberPreKey = &keys.KyberPreKey{
-					ID: *tc.Responder.KyberPreKeyID,
-					KeyPair: &keys.KyberKeyPair{
-						PublicKey:  mustHexBytes(t, tc.Responder.KyberPublic),
-						PrivateKey: mustHexBytes(t, tc.Responder.KyberPrivate),
-					},
-					Signature: mustHexBytes(t, tc.Responder.KyberSignature),
+				signedKP := keyPairFromPrivateHex(t, tc.Responder.SignedPreKeyPrivate)
+				signedSig := mustHexBytes(t, tc.Responder.SignedPreKeySignature)
+				signedPreKey := &keys.SignedPreKey{
+					ID:        tc.Responder.SignedPreKeyID,
+					KeyPair:   signedKP,
+					Signature: signedSig,
 				}
-			}
 
-			bundle, err := keys.NewPreKeyBundleWithKyber(tc.RegistrationID, tc.DeviceID, preKey, signedPreKey, kyberPreKey, respID.PublicKey)
-			require.NoError(t, err)
-
-			var encapsulate func(publicKey []byte) ([]byte, []byte, error)
-			if tc.Responder.KyberPreKeyID != nil {
-				seed := sha256.Sum256([]byte("kyber-encapsulate-" + tc.Name))
-				encapsulate = func(publicKey []byte) ([]byte, []byte, error) {
-					return signalcrypto.Kyber1024EncapsulateDeterministically(publicKey, seed[:])
+				var preKey *keys.PreKey
+				if tc.Responder.PreKeyID != nil {
+					preKP := keyPairFromPrivateHex(t, tc.Responder.PreKeyPrivate)
+					preKey = &keys.PreKey{ID: *tc.Responder.PreKeyID, KeyPair: preKP}
 				}
-			}
 
-			initiator := NewInitiatorWithGenerators(initID, func() (*signalcrypto.KeyPair, error) {
-				return initEph, nil
-			}, encapsulate)
-			initRes, err := initiator.ProcessPreKeyBundle(bundle)
-			require.NoError(t, err)
+				var kyberPreKey *keys.KyberPreKey
+				if tc.Responder.KyberPreKeyID != nil {
+					kyberPreKey = &keys.KyberPreKey{
+						ID: *tc.Responder.KyberPreKeyID,
+						KeyPair: &keys.KyberKeyPair{
+							PublicKey:  mustHexBytes(t, tc.Responder.KyberPublic),
+							PrivateKey: mustHexBytes(t, tc.Responder.KyberPrivate),
+						},
+						Signature: mustHexBytes(t, tc.Responder.KyberSignature),
+					}
+				}
 
-			require.Equal(t, mustHex32Vec(t, tc.Expected.SharedSecret), initRes.SharedSecret)
-			require.Equal(t, mustHexBytes(t, tc.Expected.AssociatedData), initRes.AssociatedData)
-			if tc.Expected.InitialChainKey == "" {
-				require.Nil(t, initRes.InitialChainKey)
-			} else {
-				require.NotNil(t, initRes.InitialChainKey)
-				require.Equal(t, mustHex32Vec(t, tc.Expected.InitialChainKey), *initRes.InitialChainKey)
-			}
-			if tc.Expected.KyberCiphertext == "" {
-				require.Empty(t, initRes.InitialMessage.KyberCiphertext)
-			} else {
-				require.Equal(t, mustHexBytes(t, tc.Expected.KyberCiphertext), initRes.InitialMessage.KyberCiphertext)
-			}
+				bundle, err := keys.NewPreKeyBundleWithKyber(tc.RegistrationID, tc.DeviceID, preKey, signedPreKey, kyberPreKey, respID.PublicKey)
+				require.NoError(t, err)
 
-			serialized, err := initRes.InitialMessage.Serialize()
-			require.NoError(t, err)
-			require.Equal(t, mustHexBytes(t, tc.Expected.MessageSerialized), serialized)
+				var encapsulate func(publicKey []byte) ([]byte, []byte, error)
+				if tc.Responder.KyberPreKeyID != nil {
+					require.NotEmpty(t, tc.Expected.KyberCiphertext)
+					kyberCT := mustHexBytes(t, tc.Expected.KyberCiphertext)
+					kyberSS, err := signalcrypto.Kyber1024Decapsulate(mustHexBytes(t, tc.Responder.KyberPrivate), kyberCT)
+					require.NoError(t, err)
+					encapsulate = func(publicKey []byte) ([]byte, []byte, error) {
+						ss := append([]byte(nil), kyberSS...)
+						ct := append([]byte(nil), kyberCT...)
+						return ss, ct, nil
+					}
+				}
 
-			store := memory.NewStore(respID, tc.RegistrationID)
-			if preKey != nil {
-				require.NoError(t, store.StorePreKey(preKey.ID, preKey))
-			}
-			if kyberPreKey != nil {
-				require.NoError(t, store.StoreKyberPreKey(kyberPreKey.ID, kyberPreKey))
-			}
+				initiator := NewInitiatorWithGenerators(initID, func() (*signalcrypto.KeyPair, error) {
+					return initEph, nil
+				}, encapsulate)
+				initRes, err := initiator.ProcessPreKeyBundle(bundle)
+				require.NoError(t, err)
 
-			responder := NewResponder(respID, signedPreKey, store, store)
-			respRes, err := responder.ProcessInitialMessage(&initRes.InitialMessage)
-			require.NoError(t, err)
-			require.Equal(t, initRes.SharedSecret, respRes.SharedSecret)
-			require.Equal(t, initRes.AssociatedData, respRes.AssociatedData)
-		})
+				require.Equal(t, mustHex32Vec(t, tc.Expected.SharedSecret), initRes.SharedSecret)
+				require.Equal(t, mustHexBytes(t, tc.Expected.AssociatedData), initRes.AssociatedData)
+				if tc.Expected.InitialChainKey == "" {
+					require.Nil(t, initRes.InitialChainKey)
+				} else {
+					require.NotNil(t, initRes.InitialChainKey)
+					require.Equal(t, mustHex32Vec(t, tc.Expected.InitialChainKey), *initRes.InitialChainKey)
+				}
+				if tc.Expected.KyberCiphertext == "" {
+					require.Empty(t, initRes.InitialMessage.KyberCiphertext)
+				} else {
+					require.Equal(t, mustHexBytes(t, tc.Expected.KyberCiphertext), initRes.InitialMessage.KyberCiphertext)
+				}
+
+				serialized, err := initRes.InitialMessage.Serialize()
+				require.NoError(t, err)
+				require.Equal(t, mustHexBytes(t, tc.Expected.MessageSerialized), serialized)
+
+				store := memory.NewStore(respID, tc.RegistrationID)
+				if preKey != nil {
+					require.NoError(t, store.StorePreKey(preKey.ID, preKey))
+				}
+				if kyberPreKey != nil {
+					require.NoError(t, store.StoreKyberPreKey(kyberPreKey.ID, kyberPreKey))
+				}
+
+				responder := NewResponder(respID, signedPreKey, store, store)
+				respRes, err := responder.ProcessInitialMessage(&initRes.InitialMessage)
+				require.NoError(t, err)
+				require.Equal(t, initRes.SharedSecret, respRes.SharedSecret)
+				require.Equal(t, initRes.AssociatedData, respRes.AssociatedData)
+			})
+		}
 	}
 }
 
-func loadX3DHVectors(t *testing.T) x3dhVectorFile {
+func loadX3DHVectors(t *testing.T, filename string) x3dhVectorFile {
 	t.Helper()
-	path := filepath.Join("..", "testing", "vectors", "x3dh.json")
+	path := filepath.Join("..", "testing", "vectors", filename)
 	raw, err := os.ReadFile(path)
 	require.NoError(t, err)
 

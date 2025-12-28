@@ -3,10 +3,16 @@
 An implementation of the Signal Protocol in Go, structured as a reusable library for end-to-end encrypted messaging. The roadmap and detailed requirements live in `spec.md`.
 
 ## Compatibility
-Wire compatibility is targeting Signal's Rust implementation (`libsignal`) at commit [`cfaf27f3a2d743e776ef553a770295d7e751277d`](https://github.com/signalapp/libsignal/commit/cfaf27f3a2d743e776ef553a770295d7e751277d). Work is in progress; the current internal envelope format will remain available as a legacy API via `signal.EnvelopeCipher` (see `PLAN.md`).
+Wire compatibility targets Signal's Rust implementation (`libsignal`) at commit [`cfaf27f3a2d743e776ef553a770295d7e751277d`](https://github.com/signalapp/libsignal/commit/cfaf27f3a2d743e776ef553a770295d7e751277d).
+
+Supported protocol surfaces:
+- 1:1 wire messages: SignalMessage v4 (pre-Kyber v3), PreKeySignalMessage.
+- Group messaging: SenderKeyMessage v3 + SenderKeyDistributionMessage.
+- Sealed Sender: ReceivedMessage v1/v2 (no multi-recipient SentMessage builder).
+- PQXDH sessions: SPQR v1, with `pq_ratchet` on Signal/PreKey messages.
 
 ## Migration (Wire vs Legacy)
-`signal.Cipher` produces libsignal wire ciphertexts. The legacy internal envelope remains available via `signal.EnvelopeCipher` (or `session.Cipher` with its `EncryptEnvelope`/`DecryptEnvelope` aliases). For mixed deployments, detect and route ciphertexts:
+Breaking change: `signal.Cipher` now produces libsignal wire ciphertexts by default. The legacy internal envelope remains available via `signal.EnvelopeCipher` (or `session.Cipher` with its `EncryptEnvelope`/`DecryptEnvelope` aliases). For mixed deployments, detect and route ciphertexts:
 
 ```go
 switch signal.DetectCiphertextFormat(ct) {

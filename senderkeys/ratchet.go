@@ -100,10 +100,20 @@ func newSenderMessageKey(iteration uint32, seed [senderKeySeedSize]byte) (sender
 	copy(iv[:], derivative[:senderKeyIVSize])
 	var cipherKey [senderKeyCipherKeySize]byte
 	copy(cipherKey[:], derivative[senderKeyIVSize:])
+	signalcrypto.ZeroBytes(derivative)
 	return senderMessageKey{
 		iteration: iteration,
 		seed:      seed,
 		iv:        iv,
 		cipherKey: cipherKey,
 	}, nil
+}
+
+func zeroSenderMessageKey(mk *senderMessageKey) {
+	if mk == nil {
+		return
+	}
+	signalcrypto.ZeroBytes(mk.seed[:])
+	signalcrypto.ZeroBytes(mk.iv[:])
+	signalcrypto.ZeroBytes(mk.cipherKey[:])
 }
