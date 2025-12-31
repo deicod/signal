@@ -11,6 +11,7 @@ import (
 )
 
 // Cipher offers high-level encryption/decryption for a remote address using the legacy envelope format.
+// This is primarily for backward compatibility. New applications should use WireCipher (via signal.NewCipher).
 type Cipher struct {
 	store         store.ProtocolStore
 	remoteAddress store.Address
@@ -26,7 +27,8 @@ func NewCipher(s store.ProtocolStore, addr store.Address) *Cipher {
 	}
 }
 
-// Encrypt uses the current session to encrypt plaintext. A session must exist in the store.
+// Encrypt encrypts plaintext using the current session, wrapping the result in a legacy envelope.
+// A session must already exist in the store.
 func (c *Cipher) Encrypt(plaintext []byte) ([]byte, error) {
 	record, err := c.loadRecordRequired()
 	if err != nil {

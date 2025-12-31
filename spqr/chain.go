@@ -8,15 +8,15 @@ import (
 )
 
 const (
-	chainDefaultMaxJump   uint32 = 25000
-	chainDefaultMaxOOO    uint32 = 2000
-	epochsToKeepPriorToSend      = 1
+	chainDefaultMaxJump     uint32 = 25000
+	chainDefaultMaxOOO      uint32 = 2000
+	epochsToKeepPriorToSend        = 1
 )
 
 // ChainParams controls SPQR chain key retention.
 type ChainParams struct {
-	MaxJump  uint32
-	MaxOOO   uint32
+	MaxJump uint32
+	MaxOOO  uint32
 }
 
 func (p ChainParams) maxJump() uint32 {

@@ -6,7 +6,8 @@ import (
 	signalerrors "github.com/deicod/signal/errors"
 )
 
-// GenerateAndStorePreKey creates a one-time pre-key and stores it in s.
+// GenerateAndStorePreKey creates a one-time pre-key and persists it to the store.
+// This key will be available for building pre-key bundles.
 func GenerateAndStorePreKey(s ProtocolStore, id uint32) (*PreKey, error) {
 	if s == nil {
 		return nil, fmt.Errorf("store is nil")
@@ -21,7 +22,8 @@ func GenerateAndStorePreKey(s ProtocolStore, id uint32) (*PreKey, error) {
 	return pk, nil
 }
 
-// GenerateAndStoreSignedPreKey creates a signed pre-key using the store's identity key pair and stores it in s.
+// GenerateAndStoreSignedPreKey creates a signed pre-key, signs it with the local identity key,
+// and persists it to the store.
 func GenerateAndStoreSignedPreKey(s ProtocolStore, id uint32) (*SignedPreKey, error) {
 	if s == nil {
 		return nil, fmt.Errorf("store is nil")
@@ -40,7 +42,8 @@ func GenerateAndStoreSignedPreKey(s ProtocolStore, id uint32) (*SignedPreKey, er
 	return spk, nil
 }
 
-// GenerateAndStoreKyberPreKey creates a signed Kyber pre-key using the store's identity key pair and stores it in s.
+// GenerateAndStoreKyberPreKey creates a signed Kyber pre-key, signs it with the local identity key,
+// and persists it to the store.
 func GenerateAndStoreKyberPreKey(s ProtocolStore, id uint32) (*KyberPreKey, error) {
 	if s == nil {
 		return nil, fmt.Errorf("store is nil")
@@ -59,7 +62,9 @@ func GenerateAndStoreKyberPreKey(s ProtocolStore, id uint32) (*KyberPreKey, erro
 	return kpk, nil
 }
 
-// BuildPreKeyBundle constructs a pre-key bundle for publishing from keys stored in s.
+// BuildPreKeyBundle constructs a pre-key bundle for publishing.
+// It retrieves the necessary keys from the store. If a preKeyID is provided, that specific one-time
+// pre-key is included. If kyberPreKeyID is provided, that Kyber pre-key is included.
 func BuildPreKeyBundle(s ProtocolStore, deviceID uint32, preKeyID *uint32, signedPreKeyID uint32, kyberPreKeyID *uint32) (*PreKeyBundle, error) {
 	if s == nil {
 		return nil, fmt.Errorf("store is nil")

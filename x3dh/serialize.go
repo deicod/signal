@@ -221,12 +221,12 @@ func DeserializeMessage(data []byte) (*Message, error) {
 	ct := append([]byte(nil), data[pos:]...)
 
 	return &Message{
-		IdentityKey:    *identity,
-		EphemeralKey:   eph,
-		PreKeyID:       preKeyID,
-		SignedPreKeyID: signedPreKeyID,
-		KyberPreKeyID:  kyberPreKeyID,
+		IdentityKey:     *identity,
+		EphemeralKey:    eph,
+		PreKeyID:        preKeyID,
+		SignedPreKeyID:  signedPreKeyID,
+		KyberPreKeyID:   kyberPreKeyID,
 		KyberCiphertext: kyberCiphertext,
-		Ciphertext:     ct,
+		Ciphertext:      ct,
 	}, nil
 }

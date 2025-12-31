@@ -15,6 +15,7 @@ import (
 )
 
 // WireCipher offers high-level encryption/decryption targeting libsignal wire formats.
+// It implements the full Double Ratchet protocol and X3DH key agreement.
 type WireCipher struct {
 	store         store.ProtocolStore
 	remoteAddress store.Address
@@ -22,6 +23,7 @@ type WireCipher struct {
 }
 
 // NewWireCipher builds a wire-compatible cipher bound to a ProtocolStore and remote address.
+// The store must be capable of persisting sessions, identities, and pre-keys.
 func NewWireCipher(s store.ProtocolStore, addr store.Address) *WireCipher {
 	return &WireCipher{
 		store:         s,
@@ -30,7 +32,11 @@ func NewWireCipher(s store.ProtocolStore, addr store.Address) *WireCipher {
 	}
 }
 
-// Encrypt uses the current session to encrypt plaintext. A session must exist in the store.
+// Encrypt encrypts plaintext for the remote address using the current session.
+// It returns a serialized SignalMessage (wire format).
+//
+// An error is returned if no session exists. Use EncryptWithPreKeyBundle to start a new session.
+// This operation advances the sending chain of the Double Ratchet.
 func (c *WireCipher) Encrypt(plaintext []byte) ([]byte, error) {
 	record, err := c.loadRecordRequired()
 	if err != nil {
@@ -50,6 +56,11 @@ func (c *WireCipher) Encrypt(plaintext []byte) ([]byte, error) {
 }
 
 // Decrypt decrypts a ciphertext using either an existing session or a pre-key bootstrap message.
+// It accepts both SignalMessage (normal transport) and PreKeySignalMessage (X3DH handshake).
+//
+// If a PreKeySignalMessage is received and no session exists, a new session is created.
+// If a session exists, it handles message ordering, replay detection (via duplicates),
+// and ratchet advancement.
 func (c *WireCipher) Decrypt(ciphertext []byte) ([]byte, error) {
 	record, err := c.loadRecordOptional()
 	if err != nil {
@@ -78,6 +89,10 @@ func (c *WireCipher) Decrypt(ciphertext []byte) ([]byte, error) {
 }
 
 // EncryptWithPreKeyBundle bootstraps a new session using the recipient's pre-key bundle.
+// It generates an X3DH key exchange message and returns a PreKeySignalMessage.
+//
+// This method should be used for the first message to a recipient. It fails if a session
+// already exists (use Encrypt instead).
 func (c *WireCipher) EncryptWithPreKeyBundle(bundle *keys.PreKeyBundle, plaintext []byte) ([]byte, error) {
 	if c == nil || c.store == nil {
 		return nil, fmt.Errorf("session cipher not initialized")

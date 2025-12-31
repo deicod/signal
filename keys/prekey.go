@@ -8,6 +8,7 @@ import (
 )
 
 // PreKey represents a one-time pre-key.
+// These are generated in batches and uploaded to the server to allow offline messaging.
 type PreKey struct {
 	ID        uint32
 	KeyPair   *signalcrypto.KeyPair
@@ -15,6 +16,7 @@ type PreKey struct {
 }
 
 // SignedPreKey represents a long-lived signed pre-key.
+// It is signed by the identity key to authenticate it. This key is rotated periodically.
 type SignedPreKey struct {
 	ID        uint32
 	KeyPair   *signalcrypto.KeyPair

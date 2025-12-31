@@ -11,12 +11,14 @@ import (
 
 // IdentityKey wraps the Curve25519 public key used for DH along with the
 // corresponding XEdDSA signing public key.
+// It is the public part of a user's long-term identity.
 type IdentityKey struct {
 	PublicKey     [32]byte // Curve25519 public key
 	SigningPublic [32]byte // XEdDSA signing public key
 }
 
 // IdentityKeyPair holds the curve25519 private key and associated public keys.
+// This is the sensitive private component of a user's identity and should be stored securely.
 type IdentityKeyPair struct {
 	PublicKey  IdentityKey
 	PrivateKey [32]byte
@@ -46,11 +48,13 @@ func GenerateIdentityKeyPair() (*IdentityKeyPair, error) {
 }
 
 // Sign produces an XEdDSA signature over the message using the identity key.
+// This is used for signing pre-keys and other authentication tasks.
 func (k *IdentityKeyPair) Sign(message []byte) ([]byte, error) {
 	return signalcrypto.XEdDSASign(k.PrivateKey, message)
 }
 
 // Verify checks an XEdDSA signature against the identity's public key.
+// Returns true if the signature is valid for the given message.
 func (k *IdentityKey) Verify(message, signature []byte) bool {
 	return signalcrypto.XEdDSAVerify(k.PublicKey, signature, message)
 }
@@ -63,6 +67,7 @@ func (k *IdentityKey) Fingerprint() string {
 }
 
 // FromBytes creates an IdentityKey from raw curve25519 and XEdDSA public keys.
+// It verifies that the keys are valid Curve25519 points.
 func FromBytes(curvePub, signingPub []byte) (IdentityKey, error) {
 	var ik IdentityKey
 	if len(curvePub) != 32 || len(signingPub) != 32 {
