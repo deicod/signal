@@ -8,12 +8,14 @@ import (
 )
 
 // KyberKeyPair holds a serialized Kyber key pair (type-prefixed bytes).
+// Used for post-quantum resistant key agreement (PQXDH).
 type KyberKeyPair struct {
 	PublicKey  []byte
 	PrivateKey []byte
 }
 
 // KyberPreKey represents a long-lived signed Kyber pre-key.
+// It is signed by the identity key and used in PQXDH handshakes.
 type KyberPreKey struct {
 	ID        uint32
 	KeyPair   *KyberKeyPair

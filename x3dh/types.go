@@ -7,13 +7,13 @@ import (
 
 // Message is the initial message sent by the initiator.
 type Message struct {
-	IdentityKey    keys.IdentityKey
-	EphemeralKey   [32]byte
-	PreKeyID       *uint32
-	SignedPreKeyID uint32
-	KyberPreKeyID  *uint32
+	IdentityKey     keys.IdentityKey
+	EphemeralKey    [32]byte
+	PreKeyID        *uint32
+	SignedPreKeyID  uint32
+	KyberPreKeyID   *uint32
 	KyberCiphertext []byte
-	Ciphertext     []byte
+	Ciphertext      []byte
 }
 
 // Result carries the derived shared secret and associated metadata.

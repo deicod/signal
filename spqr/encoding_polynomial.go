@@ -6,9 +6,9 @@ import (
 )
 
 const (
-	polyNumPolys                 = 16
-	polyChunkDataSize            = 32
-	maxStoredPolynomialDegreeV1  = 35
+	polyNumPolys                = 16
+	polyChunkDataSize           = 32
+	maxStoredPolynomialDegreeV1 = 35
 )
 
 type chunk struct {
